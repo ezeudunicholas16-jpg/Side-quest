@@ -1891,10 +1891,17 @@ function Brand() {
 function InfoSections() {
   return (
     <>
-      <section id="features" className="w-full bg-muted/25 py-12 md:py-24">
+      <motion.section
+        id="features"
+        className="w-full bg-muted/25 py-12 md:py-24"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: false, amount: 0.22 }}
+        variants={fadeIn}
+      >
         <div className="container max-w-7xl px-4 md:px-6">
-          <div className="space-y-12">
-            <div className="space-y-4 text-center">
+          <motion.div className="space-y-12" variants={staggerContainer}>
+            <motion.div className="space-y-4 text-center" variants={itemFadeIn}>
               <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Functional Local Demo
               </h2>
@@ -1902,7 +1909,7 @@ function InfoSections() {
                 Create quests, accept work, submit proof, generate receipts, open disputes,
                 and refresh without losing local demo state.
               </p>
-            </div>
+            </motion.div>
             <div className="grid gap-8 md:grid-cols-2">
               {[
                 {
@@ -1916,87 +1923,113 @@ function InfoSections() {
                   description: "Physical quests show campus verification, tracking, proof, SOS, and handoff points.",
                 },
               ].map((feature) => (
-                <Card className="h-full border-2 bg-card/60 backdrop-blur" key={feature.title}>
-                  <CardHeader>
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500">
-                      <feature.icon className="h-6 w-6 text-white" />
-                    </div>
-                    <CardTitle>{feature.title}</CardTitle>
-                    <CardDescription>{feature.description}</CardDescription>
-                  </CardHeader>
-                </Card>
+                <motion.div key={feature.title} variants={itemFadeIn}>
+                  <Card className="h-full border-2 bg-card/60 backdrop-blur">
+                    <CardHeader>
+                      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500">
+                        <feature.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <CardTitle>{feature.title}</CardTitle>
+                      <CardDescription>{feature.description}</CardDescription>
+                    </CardHeader>
+                  </Card>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
-      <section id="how-it-works" className="w-full py-12 md:py-24">
+      <motion.section
+        id="how-it-works"
+        className="w-full py-12 md:py-24"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: false, amount: 0.24 }}
+        variants={fadeIn}
+      >
         <div className="container max-w-7xl px-4 md:px-6">
-          <div className="grid gap-8 md:grid-cols-3">
+          <motion.div className="grid gap-8 md:grid-cols-3" variants={staggerContainer}>
             {[
               [FileText, "Post", "Tasker creates quest and fake escrow is locked."],
               [Users, "Complete", "Worker progresses through accept, start, proof, and delivery."],
               [Scale, "Resolve", "Disputes move through mediator recommendation and admin verdict."],
             ].map(([Icon, title, copy]) => (
-              <Card className="h-full text-center" key={title as string}>
-                <CardHeader>
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500">
-                    <Icon className="h-8 w-8 text-white" />
-                  </div>
-                  <CardTitle>{title as string}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{copy as string}</p>
-                </CardContent>
-              </Card>
+              <motion.div key={title as string} variants={itemFadeIn}>
+                <Card className="h-full text-center">
+                  <CardHeader>
+                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500">
+                      <Icon className="h-8 w-8 text-white" />
+                    </div>
+                    <CardTitle>{title as string}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground">{copy as string}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
-      <section id="safety" className="w-full bg-muted/25 py-12 md:py-24">
+      <motion.section
+        id="safety"
+        className="w-full bg-muted/25 py-12 md:py-24"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: false, amount: 0.24 }}
+        variants={fadeIn}
+      >
         <div className="container max-w-7xl px-4 md:px-6">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <motion.div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" variants={staggerContainer}>
             {[
               [Shield, "University Verification", "Campus badges and physical quest restrictions."],
               [MapPin, "Live Tracking Mock", "Status switches from inactive to active to completed."],
               [AlertCircle, "SOS and Reports", "Physical quest cards show safety actions."],
             ].map(([Icon, title, copy]) => (
-              <Card className="h-full" key={title as string}>
-                <CardHeader>
-                  <Icon className="mb-2 h-8 w-8 text-primary" />
-                  <CardTitle className="text-lg">{title as string}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">{copy as string}</p>
-                </CardContent>
-              </Card>
+              <motion.div key={title as string} variants={itemFadeIn}>
+                <Card className="h-full">
+                  <CardHeader>
+                    <Icon className="mb-2 h-8 w-8 text-primary" />
+                    <CardTitle className="text-lg">{title as string}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">{copy as string}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
     </>
   );
 }
 
 function Footer() {
   return (
-    <footer className="w-full border-t py-12">
+    <motion.footer
+      className="w-full border-t py-12"
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: false, amount: 0.2 }}
+      variants={fadeIn}
+    >
       <div className="container max-w-7xl px-4 md:px-6">
-        <div className="grid gap-8 md:grid-cols-4">
-          <div className="space-y-4">
+        <motion.div className="grid gap-8 md:grid-cols-4" variants={staggerContainer}>
+          <motion.div className="space-y-4" variants={itemFadeIn}>
             <Brand />
             <p className="text-sm text-muted-foreground">
               Turn everyday tasks into quests. Local-state Phase 2 demo.
             </p>
-          </div>
+          </motion.div>
           {[
             { title: "Product", links: ["Features", "How It Works", "Safety"] },
             { title: "Demo", links: ["LocalStorage", "Mock Wallet", "Disputes"] },
             { title: "Next", links: ["Backend", "Solana Wallet", "Campus Verification"] },
           ].map((section) => (
-            <div key={section.title} className="space-y-4">
+            <motion.div key={section.title} className="space-y-4" variants={itemFadeIn}>
               <h3 className="font-semibold">{section.title}</h3>
               <ul className="space-y-2">
                 {section.links.map((link) => (
@@ -2007,14 +2040,14 @@ function Footer() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
         <Separator className="my-8" />
-        <p className="text-sm text-muted-foreground">
+        <motion.p className="text-sm text-muted-foreground" variants={itemFadeIn}>
           (c) {new Date().getFullYear()} Side Quests. All rights reserved.
-        </p>
+        </motion.p>
       </div>
-    </footer>
+    </motion.footer>
   );
 }
