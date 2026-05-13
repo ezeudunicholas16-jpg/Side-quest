@@ -1,11 +1,9 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  AlertCircle,
   ArrowRight,
-  Award,
   Bell,
   Briefcase,
   Building2,
@@ -27,7 +25,6 @@ import {
   ListChecks,
   MapPinned,
   MapPin,
-  Menu,
   MessageSquare,
   Navigation,
   Package,
@@ -44,7 +41,6 @@ import {
   ShieldAlert,
   ShoppingBag,
   Sparkles,
-  Siren,
   Target,
   TrendingUp,
   Upload,
@@ -52,7 +48,6 @@ import {
   Users,
   Video,
   Wallet,
-  X,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -80,14 +75,16 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import FeatureShowcaseLanding from "@/components/feature-showcase/FeatureShowcaseLanding";
 import {
   type AuthSession,
   isSupabaseConfigured,
@@ -113,7 +110,7 @@ import {
 import { uploadQuestFile } from "@/lib/supabase/storage";
 
 type UserRole = "tasker" | "worker" | "vendor" | "mediator" | "admin";
-type QuestType = "online" | "physical" | "vendor";
+type QuestType = "online" | "physical";
 type QuestCategory =
   | "design"
   | "development"
@@ -136,8 +133,13 @@ type QuestStatus =
   | "awaiting-confirmation"
   | "completed"
   | "disputed"
-  | "expired";
-type DashboardTab = "online" | "physical" | "vendor" | "my-quests" | "disputes";
+  | "expired"
+  | "cancelled-before-approval"
+  | "cancelled-before-start"
+  | "cancelled-mid-mission"
+  | "cancelled-after-submission"
+  | "cancelled-after-vendor-payment";
+type DashboardTab = "online" | "physical" | "my-quests" | "disputes";
 type AppSection =
   | "overview"
   | "quest-feed"
@@ -150,23 +152,143 @@ type AppSection =
   | "disputes"
   | "safety";
 type DisputeStatus = "pending" | "recommended" | "finalized";
-type ObjectiveKey =
-  | "accepted"
-  | "started"
-  | "arrived"
-  | "reviewed"
-  | "picked"
-  | "vendor-confirmed"
-  | "vendor-paid"
-  | "receipt"
-  | "proof"
-  | "delivered"
-  | "review"
-  | "final"
-  | "confirmed"
-  | "payout";
+type ObjectiveKey = string;
 type ChatMessageType = "text" | "image" | "video" | "location" | "system" | "check-in";
 type LocationStatus = "At pickup" | "En route" | "At handoff point";
+type CancellationState =
+  | "cancelled-before-approval"
+  | "cancelled-before-start"
+  | "cancelled-mid-mission"
+  | "cancelled-after-submission"
+  | "cancelled-after-vendor-payment";
+type CancellationActor = "tasker" | "worker";
+type CancellationReason =
+  | "no longer needed"
+  | "emergency"
+  | "wrong quest details"
+  | "found alternative"
+  | "accidental posting"
+  | "unsafe conditions"
+  | "other";
+type VerificationState = "Verified" | "Partially Verified" | "Unverified" | "Disputed";
+type OnlineMilestoneStatus =
+  | "Submitted"
+  | "Reviewed"
+  | "Revision Requested"
+  | "Approved"
+  | "Disputed";
+
+interface QuestCancellation {
+  id: string;
+  state: CancellationState;
+  actor: CancellationActor;
+  reason: CancellationReason;
+  explanation: string;
+  createdAt: string;
+  effortPercent: number;
+  workerCompensation: number;
+  taskerRefund: number;
+}
+
+interface CheckpointRecord {
+  id: string;
+  title: string;
+  description: string;
+  effortWeight: number;
+  timestamp?: string;
+  proofRequired: boolean;
+  workerNote: string;
+  uploadedProof?: string;
+  verificationStatus: VerificationState;
+  gps: string;
+  campusArea: string;
+  locationConfidence: number;
+  snapshot: string;
+  warning?: string;
+}
+
+interface OnlineMilestone {
+  id: string;
+  title: string;
+  workerExplanation: string;
+  proofUpload: string;
+  timestamp?: string;
+  completionPercentageClaimed: number;
+  taskerFeedback?: string;
+  revisionRequest?: string;
+  status: OnlineMilestoneStatus;
+}
+
+interface CopilotObjective {
+  id: string;
+  title: string;
+  description: string;
+  proofRequirement: string;
+  completionRule: string;
+  effortWeight: number;
+  verificationRecommendation: string;
+  approved: boolean;
+}
+
+interface CompensationPreview {
+  effortPercent: number;
+  workerCompensation: number;
+  taskerRefund: number;
+  breakdown: string[];
+  updatedAt: string;
+}
+
+interface CopilotMessage {
+  id: string;
+  prompt: string;
+  response: string;
+  createdAt: string;
+}
+
+interface AttachmentMetadata {
+  id: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: string;
+  relatedQuestDraftId?: string;
+}
+
+type ProofType = "image" | "video" | "document" | "receipt";
+type ReportReason =
+  | "unsafe behavior"
+  | "wrong location"
+  | "harassment"
+  | "item issue"
+  | "payment issue"
+  | "fraud/suspicious activity"
+  | "other";
+
+interface ProofRecord {
+  id: string;
+  note: string;
+  fileName: string;
+  proofType: ProofType;
+  checkpointId?: string;
+  milestoneId?: string;
+  createdAt: string;
+}
+
+interface SafetyAlertRecord {
+  id: string;
+  triggeredBy: UserRole;
+  message: string;
+  createdAt: string;
+}
+
+interface IssueReportRecord {
+  id: string;
+  reason: ReportReason;
+  explanation: string;
+  escalateToDispute: boolean;
+  createdAt: string;
+  submittedBy: UserRole;
+}
 
 interface Receipt {
   id: string;
@@ -175,6 +297,18 @@ interface Receipt {
   amount: number;
   items: string[];
   issuedAt: string;
+}
+
+interface VendorPaymentRecord {
+  id: string;
+  questId: string;
+  questTitle: string;
+  vendorName: string;
+  vendorWallet: string;
+  amount: number;
+  itemCount: number;
+  receiptGenerated: boolean;
+  paidAt: string;
 }
 
 interface Quest {
@@ -214,6 +348,18 @@ interface Quest {
   reimbursementEnabled: boolean;
   applications?: WorkerApplication[];
   late?: boolean;
+  cancellations?: QuestCancellation[];
+  checkpoints?: CheckpointRecord[];
+  onlineMilestones?: OnlineMilestone[];
+  copilotObjectives?: CopilotObjective[];
+  copilotMessages?: CopilotMessage[];
+  compensationPreview?: CompensationPreview;
+  proofs?: ProofRecord[];
+  attachments?: AttachmentMetadata[];
+  safetyAlerts?: SafetyAlertRecord[];
+  issueReports?: IssueReportRecord[];
+  safetyFlagged?: boolean;
+  trustedContactShared?: boolean;
 }
 
 interface WorkerApplication {
@@ -228,7 +374,7 @@ interface WorkerApplication {
   disputeRate: number;
   profileBadge: string;
   lastActive: string;
-  status: "pending" | "approved" | "declined";
+  status: "pending" | "approved" | "declined" | "withdrawn";
   appliedAt: string;
   recommended?: boolean;
 }
@@ -324,6 +470,9 @@ interface QuestFormState {
   vendorName: string;
   itemList: string;
   reimbursementEnabled: boolean;
+  copilotObjectives: CopilotObjective[];
+  attachments: AttachmentMetadata[];
+  draftId: string;
 }
 
 const QUESTS_STORAGE_KEY = "side-quests.phase2.quests";
@@ -352,6 +501,11 @@ const statusLabels: Record<QuestStatus, string> = {
   completed: "Completed",
   disputed: "Disputed",
   expired: "Expired",
+  "cancelled-before-approval": "Cancelled Before Approval",
+  "cancelled-before-start": "Cancelled Before Start",
+  "cancelled-mid-mission": "Cancelled Mid-Mission",
+  "cancelled-after-submission": "Cancelled After Submission",
+  "cancelled-after-vendor-payment": "Cancelled After Vendor Payment",
 };
 
 const defaultWallet: WalletState = {
@@ -378,9 +532,12 @@ const defaultQuestForm: QuestFormState = {
   urgency: "medium",
   campus: "UNILAG Main Campus",
   safeHandoffPoint: "Main Library reception",
-  vendorName: "Campus Mart",
+  vendorName: "",
   itemList: "",
   reimbursementEnabled: false,
+  copilotObjectives: [],
+  attachments: [],
+  draftId: "draft-local",
 };
 
 const workerDisputeReasons = [
@@ -391,6 +548,28 @@ const workerDisputeReasons = [
   "Vendor/tasker issue",
   "Other",
 ] as const;
+
+const cancellationReasons: CancellationReason[] = [
+  "no longer needed",
+  "emergency",
+  "wrong quest details",
+  "found alternative",
+  "accidental posting",
+  "unsafe conditions",
+  "other",
+];
+
+const proofTypes: ProofType[] = ["image", "video", "document", "receipt"];
+
+const reportReasons: ReportReason[] = [
+  "unsafe behavior",
+  "wrong location",
+  "harassment",
+  "item issue",
+  "payment issue",
+  "fraud/suspicious activity",
+  "other",
+];
 
 const demoQuests: Quest[] = [
   {
@@ -487,7 +666,7 @@ const demoQuests: Quest[] = [
     description:
       "Pick items from Campus Mart. Side Quests pays vendor wallet directly after checkout verification.",
     category: "shopping",
-    type: "vendor",
+    type: "physical",
     reward: 12,
     itemFunds: 38,
     vendorName: "Campus Mart",
@@ -609,11 +788,6 @@ const demoQuests: Quest[] = [
 
 const demoDisputes: Dispute[] = [];
 
-const fadeIn = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
-};
-
 const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
@@ -639,6 +813,234 @@ function readStorage<T>(key: string, fallback: T): T {
 
 function currency(value: number) {
   return `$${value.toFixed(2)}`;
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentIconForType(type: string) {
+  const normalized = type.toLowerCase();
+  if (normalized.includes("image")) return ImageIcon;
+  if (normalized.includes("pdf") || normalized.includes("document") || normalized.includes("word")) return FileText;
+  if (normalized.includes("receipt")) return ReceiptText;
+  return Paperclip;
+}
+
+const questTypeLabels: Record<QuestType, string> = {
+  online: "Online Quest",
+  physical: "Physical Quest",
+};
+
+function questTypeClass(type: QuestType) {
+  if (type === "online") return "border-violet-500/25 bg-violet-500/12 text-violet-100";
+  return "border-emerald-500/25 bg-emerald-500/12 text-emerald-100";
+}
+
+function QuestTypeBadge({ type }: { type: QuestType }) {
+  const Icon = type === "online" ? Globe : MapPin;
+  return (
+    <Badge className={questTypeClass(type)} variant="outline">
+      <Icon className="mr-1 h-3 w-3" />
+      {questTypeLabels[type]}
+    </Badge>
+  );
+}
+
+const questSelectorTypeLabels: Record<QuestType, string> = {
+  online: "Online",
+  physical: "Physical",
+};
+
+function QuestSelectorTypeBadge({ type }: { type: QuestType }) {
+  return (
+    <Badge className={`px-1.5 py-0 text-[10px] ${questTypeClass(type)}`} variant="outline">
+      {questSelectorTypeLabels[type]}
+    </Badge>
+  );
+}
+
+function isVendorPurchaseQuest(quest: Pick<Quest, "vendorName" | "itemFunds" | "itemList">) {
+  return Boolean(quest.vendorName || quest.itemFunds > 0 || quest.itemList.length > 0);
+}
+
+function checkpointTemplatesForQuest(quest: Pick<Quest, "type" | "vendorName" | "itemFunds" | "itemList" | "campus">): CheckpointRecord[] {
+  if (quest.type !== "physical") return [];
+  const vendor = isVendorPurchaseQuest(quest);
+  const steps = vendor
+    ? [
+        ["arrive-vendor", "Arrive at vendor", "Worker reaches the verified vendor counter.", 18, true],
+        ["pick-items", "Pick listed items", "Worker selects items and records substitutions.", 24, true],
+        ["vendor-confirm", "Vendor confirms item list", "Vendor checks basket before escrow release.", 20, true],
+        ["receipt-generated", "Vendor wallet paid and receipt generated", "Item funds are paid directly to vendor wallet.", 18, true],
+        ["handoff", "Deliver items at handoff", "Worker completes campus handoff with proof.", 20, true],
+      ]
+    : [
+        ["arrive-pickup", "Arrive at pickup location", "Worker reaches the campus pickup point.", 20, true],
+        ["pickup-proof", "Pick up item", "Worker collects the item and records condition.", 25, true],
+        ["route-update", "Share route check-in", "Worker confirms movement toward the handoff point.", 20, false],
+        ["delivery-proof", "Upload delivery proof", "Worker submits proof at the handoff point.", 35, true],
+      ];
+
+  return steps.map(([id, title, description, weight, proofRequired]) => ({
+    id: String(id),
+    title: String(title),
+    description: String(description),
+    effortWeight: Number(weight),
+    proofRequired: Boolean(proofRequired),
+    workerNote: "",
+    verificationStatus: "Unverified",
+    gps: "6.5150, 3.3890",
+    campusArea: quest.campus || "Verified campus zone",
+    locationConfidence: 0,
+    snapshot: "",
+  }));
+}
+
+function onlineMilestonesForQuest(quest: Pick<Quest, "title" | "category">): OnlineMilestone[] {
+  const base =
+    quest.category === "design"
+      ? ["Review brief and references", "Submit draft direction", "Final source file handoff"]
+      : ["Review task brief", "Submit progress proof", "Final submission"];
+  return base.map((title, index) => ({
+    id: `online-${index + 1}`,
+    title,
+    workerExplanation: "",
+    proofUpload: "",
+    completionPercentageClaimed: index === 0 ? 25 : index === 1 ? 60 : 100,
+    status: "Submitted",
+  }));
+}
+
+function calculateCompensation(quest: Quest): CompensationPreview {
+  const breakdown: string[] = [];
+  let effortPercent = 0;
+
+  if (quest.type === "physical") {
+    const checkpoints = quest.checkpoints?.length ? quest.checkpoints : checkpointTemplatesForQuest(quest);
+    effortPercent = checkpoints.reduce((sum, checkpoint) => {
+      const value =
+        checkpoint.verificationStatus === "Verified"
+          ? checkpoint.effortWeight
+          : checkpoint.verificationStatus === "Partially Verified"
+            ? checkpoint.effortWeight / 2
+            : 0;
+      breakdown.push(
+        `${checkpoint.title}: ${checkpoint.verificationStatus} (${Math.round(value)}% of reward basis)`,
+      );
+      return sum + value;
+    }, 0);
+  } else {
+    const milestones = quest.onlineMilestones?.length ? quest.onlineMilestones : onlineMilestonesForQuest(quest);
+    effortPercent = milestones.reduce((max, milestone) => {
+      const recognized =
+        milestone.status === "Approved" || milestone.status === "Reviewed"
+          ? milestone.completionPercentageClaimed
+          : milestone.status === "Submitted"
+            ? milestone.completionPercentageClaimed / 2
+            : 0;
+      breakdown.push(`${milestone.title}: ${milestone.status} (${Math.round(recognized)}% recognized)`);
+      return Math.max(max, recognized);
+    }, 0);
+  }
+
+  const bounded = Math.max(0, Math.min(100, Math.round(effortPercent)));
+  const workerCompensation = Number(((quest.reward * bounded) / 100).toFixed(2));
+  return {
+    effortPercent: bounded,
+    workerCompensation,
+    taskerRefund: Number((quest.reward - workerCompensation).toFixed(2)),
+    breakdown,
+    updatedAt: nowLabel(),
+  };
+}
+
+function ensureQuestSystems(quest: Quest): Quest {
+  const approvedCopilot = (quest.copilotObjectives ?? []).filter((objective) => objective.approved);
+  const copilotCheckpoints: CheckpointRecord[] = approvedCopilot.map((objective) => ({
+    id: objective.id,
+    title: objective.title,
+    description: objective.description,
+    effortWeight: objective.effortWeight,
+    proofRequired: Boolean(objective.proofRequirement),
+    workerNote: "",
+    verificationStatus: "Unverified",
+    gps: "6.5150, 3.3890",
+    campusArea: quest.campus || "Verified campus zone",
+    locationConfidence: 0,
+    snapshot: "",
+  }));
+  const copilotMilestones: OnlineMilestone[] = approvedCopilot.map((objective, index) => ({
+    id: objective.id,
+    title: objective.title,
+    workerExplanation: "",
+    proofUpload: "",
+    completionPercentageClaimed: Math.min(100, (index + 1) * Math.round(100 / Math.max(1, approvedCopilot.length))),
+    status: "Submitted",
+  }));
+  const next: Quest = {
+    ...quest,
+    itemList: quest.itemList ?? [],
+    applications: quest.applications ?? [],
+    cancellations: quest.cancellations ?? [],
+    checkpoints:
+      quest.type === "physical"
+        ? quest.checkpoints?.length
+          ? quest.checkpoints
+          : copilotCheckpoints.length
+            ? copilotCheckpoints
+            : checkpointTemplatesForQuest(quest)
+        : [],
+    onlineMilestones:
+      quest.type === "online"
+        ? quest.onlineMilestones?.length
+          ? quest.onlineMilestones
+          : copilotMilestones.length
+            ? copilotMilestones
+            : onlineMilestonesForQuest(quest)
+        : [],
+    copilotObjectives: quest.copilotObjectives ?? [],
+    copilotMessages: quest.copilotMessages ?? [],
+    proofs: quest.proofs ?? [],
+    attachments: quest.attachments ?? [],
+    safetyAlerts: quest.safetyAlerts ?? [],
+    issueReports: quest.issueReports ?? [],
+    safetyFlagged: quest.safetyFlagged ?? false,
+    trustedContactShared: quest.trustedContactShared ?? false,
+  };
+  return {
+    ...next,
+    compensationPreview: next.compensationPreview ?? calculateCompensation(next),
+  };
+}
+
+function normalizeQuestType(quest: Quest | (Omit<Quest, "type"> & { type: string })): Quest {
+  return ensureQuestSystems({
+    ...quest,
+    type: quest.type === "online" ? "online" : "physical",
+  } as Quest);
+}
+
+function vendorPaymentRecordsFromQuests(quests: Quest[]): VendorPaymentRecord[] {
+  return quests
+    .filter(
+      (quest) =>
+        isVendorPurchaseQuest(quest) &&
+        (quest.vendorConfirmed || quest.vendorPaidAmount > 0 || Boolean(quest.receipt)),
+    )
+    .map((quest) => ({
+      id: quest.receipt?.id ?? `vendor-payment-${quest.id}`,
+      questId: quest.id,
+      questTitle: quest.title,
+      vendorName: quest.vendorName || "Verified vendor",
+      vendorWallet: quest.vendorWallet || "vendor_wallet.sol",
+      amount: quest.vendorPaidAmount || quest.receipt?.amount || quest.itemFunds,
+      itemCount: quest.itemList.length,
+      receiptGenerated: Boolean(quest.receipt),
+      paidAt: quest.receipt?.issuedAt ?? quest.createdAt,
+    }));
 }
 
 function makeId(prefix: string) {
@@ -689,7 +1091,10 @@ function questPublishState(quest: Quest) {
     applicationCountdown: now < closeAt ? formatDuration(closeAt - now) : "Closed",
     deadlineCountdown: now < deadline ? formatDuration(deadline - now) : "Late",
     isApplicationClosed: now >= closeAt,
-    isLate: now > deadline && !["completed", "disputed", "expired"].includes(quest.status),
+    isLate:
+      now > deadline &&
+      !["completed", "disputed", "expired"].includes(quest.status) &&
+      !quest.status.startsWith("cancelled"),
   };
 }
 
@@ -704,7 +1109,7 @@ function formatDuration(ms: number) {
 }
 
 function createMockApplication(quest: Quest, note: string, eta: string): WorkerApplication {
-  const physical = quest.type === "physical" || quest.type === "vendor";
+  const physical = quest.type === "physical";
   const distances = ["2 min away", "5 min away", "10 min away"];
   const completed = 18 + Math.floor(Math.random() * 60);
   const rating = Number((4.55 + Math.random() * 0.44).toFixed(2));
@@ -738,6 +1143,14 @@ function nowLabel() {
 }
 
 function objectiveBlueprint(quest: Quest): MissionObjective[] {
+  const approvedCopilotObjectives = (quest.copilotObjectives ?? []).filter((objective) => objective.approved);
+  if (approvedCopilotObjectives.length > 0) {
+    return approvedCopilotObjectives.map((objective) => ({
+      id: objective.id,
+      label: objective.title,
+    }));
+  }
+
   if (quest.type === "online") {
     return [
       { id: "accepted", label: "Accept quest" },
@@ -749,7 +1162,7 @@ function objectiveBlueprint(quest: Quest): MissionObjective[] {
     ];
   }
 
-  if (quest.type === "vendor") {
+  if (isVendorPurchaseQuest(quest)) {
     return [
       { id: "accepted", label: "Accept quest" },
       { id: "arrived", label: "Arrive at vendor" },
@@ -884,6 +1297,13 @@ function statusClass(status: QuestStatus) {
       return "border-rose-500/25 bg-rose-500/12 text-rose-200";
     case "expired":
       return "border-zinc-500/25 bg-zinc-500/12 text-zinc-200";
+    case "cancelled-before-approval":
+    case "cancelled-before-start":
+      return "border-orange-500/25 bg-orange-500/12 text-orange-200";
+    case "cancelled-mid-mission":
+    case "cancelled-after-submission":
+    case "cancelled-after-vendor-payment":
+      return "border-rose-500/25 bg-rose-500/12 text-rose-200";
   }
 }
 
@@ -906,16 +1326,14 @@ export default function Page() {
 
 function SideQuestsApp() {
   const [currentView, setCurrentView] = useState<"landing" | "app">("landing");
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>("tasker");
   const [selectedTab, setSelectedTab] = useState<DashboardTab>("online");
   const [showBalance, setShowBalance] = useState(true);
   const [isPostQuestOpen, setIsPostQuestOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [appSection, setAppSection] = useState<AppSection>("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [quests, setQuests] = useState<Quest[]>(() =>
-    readStorage(QUESTS_STORAGE_KEY, demoQuests),
+    readStorage<Quest[]>(QUESTS_STORAGE_KEY, demoQuests).map(normalizeQuestType),
   );
   const [selectedQuestId, setSelectedQuestId] = useState(() => demoQuests[0]?.id ?? "");
   const [missionStates, setMissionStates] = useState<Record<string, MissionState>>(() =>
@@ -936,12 +1354,6 @@ function SideQuestsApp() {
   const [isSyncing, setIsSyncing] = useState(false);
 
   const useSupabaseBackend = isSupabaseConfigured && Boolean(session);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -991,7 +1403,9 @@ function SideQuestsApp() {
           if (quest.status === "open-for-applications" && timing.isApplicationClosed) {
             return {
               ...quest,
-              status: (quest.applications ?? []).length > 0 ? "reviewing-applicants" : "expired",
+              status: (quest.applications ?? []).some((application) => application.status === "pending")
+                ? "reviewing-applicants"
+                : "expired",
             };
           }
           if (timing.isLate && !quest.late) return { ...quest, late: true };
@@ -1012,7 +1426,7 @@ function SideQuestsApp() {
         fetchQuestsFromSupabase(),
         fetchDisputesFromSupabase(),
       ]);
-      setQuests(nextQuests as unknown as Quest[]);
+      setQuests((nextQuests as unknown as Quest[]).map(normalizeQuestType));
       setDisputes(
         nextDisputes.map((dispute) => ({
           ...dispute,
@@ -1247,7 +1661,7 @@ function SideQuestsApp() {
       try {
         await createQuestInSupabase(form);
         await refreshFromSupabase();
-        setSelectedTab(form.type === "online" ? "online" : form.type === "physical" ? "physical" : "vendor");
+        setSelectedTab(form.type === "online" ? "online" : "physical");
         setCurrentView("app");
       } catch (error) {
         setBackendError(error instanceof Error ? error.message : "Could not create quest.");
@@ -1258,7 +1672,10 @@ function SideQuestsApp() {
     }
 
     const reward = Number(form.reward) || 0;
-    const itemFunds = form.type === "vendor" ? Number(form.itemFunds) || 0 : 0;
+    const hasVendorPurchase =
+      form.type === "physical" &&
+      (Number(form.itemFunds) > 0 || Boolean(form.vendorName.trim()) || splitItems(form.itemList).length > 0);
+    const itemFunds = hasVendorPurchase ? Number(form.itemFunds) || 0 : 0;
     const publishAt = form.publishImmediately
       ? new Date()
       : form.scheduledPublishAt
@@ -1275,14 +1692,14 @@ function SideQuestsApp() {
       type: form.type,
       reward,
       itemFunds,
-      vendorName: form.type === "vendor" ? form.vendorName || "Campus Mart" : undefined,
+      vendorName: hasVendorPurchase ? form.vendorName || "Verified campus vendor" : undefined,
       vendorWallet:
-        form.type === "vendor"
+        hasVendorPurchase
           ? `vendor_${(form.vendorName || "campus_mart")
               .toLowerCase()
               .replace(/\W+/g, "_")}.sol`
           : undefined,
-      itemList: form.type === "vendor" ? splitItems(form.itemList) : [],
+      itemList: hasVendorPurchase ? splitItems(form.itemList) : [],
       location: form.type === "online" ? undefined : form.campus,
       campus: form.type === "online" ? undefined : form.campus,
       safeHandoffPoint:
@@ -1305,14 +1722,16 @@ function SideQuestsApp() {
       workerRewardReleased: false,
       reimbursementEnabled: form.reimbursementEnabled,
       applications: [],
+      copilotObjectives: form.copilotObjectives,
+      attachments: form.attachments,
     };
 
-    setQuests((current) => [quest, ...current]);
+    setQuests((current) => [ensureQuestSystems(quest), ...current]);
     setWallet((current) => ({
       ...current,
       taskerBalance: Math.max(0, current.taskerBalance - reward - itemFunds),
     }));
-    setSelectedTab(form.type === "online" ? "online" : form.type === "physical" ? "physical" : "vendor");
+    setSelectedTab(form.type === "online" ? "online" : "physical");
     setCurrentView("app");
   }
 
@@ -1384,11 +1803,362 @@ function SideQuestsApp() {
     addMissionActivity(id, "Application window extended", "Tasker added 10 more minutes for applicants.");
   }
 
+  function withdrawApplication(id: string) {
+    updateQuest(id, (quest) => ({
+      ...quest,
+      applications: (quest.applications ?? []).map((application) =>
+        application.workerName === "You" && application.status === "pending"
+          ? { ...application, status: "withdrawn" }
+          : application,
+      ),
+    }));
+    addMissionActivity(id, "Application withdrawn", "Worker withdrew their application before approval.");
+  }
+
+  function cancellationStateForQuest(quest: Quest): CancellationState {
+    if (quest.vendorPaidAmount > 0 || quest.receipt) return "cancelled-after-vendor-payment";
+    if (quest.proofText || quest.deliveryProof || quest.status === "awaiting-confirmation") {
+      return "cancelled-after-submission";
+    }
+    if (quest.status === "in-progress") return "cancelled-mid-mission";
+    if (quest.worker || quest.status === "worker-approved" || quest.status === "accepted") {
+      return "cancelled-before-start";
+    }
+    return "cancelled-before-approval";
+  }
+
+  function cancelQuest(
+    id: string,
+    actor: CancellationActor,
+    reason: CancellationReason,
+    explanation: string,
+  ) {
+    const quest = quests.find((item) => item.id === id);
+    if (!quest) return;
+    const state = cancellationStateForQuest(quest);
+    const preview = calculateCompensation(quest);
+    const cancellation: QuestCancellation = {
+      id: makeId("cancellation"),
+      state,
+      actor,
+      reason,
+      explanation: explanation || reason,
+      createdAt: nowLabel(),
+      effortPercent: preview.effortPercent,
+      workerCompensation: preview.workerCompensation,
+      taskerRefund: preview.taskerRefund,
+    };
+    updateQuest(id, (questItem) => ({
+      ...questItem,
+      status: state,
+      cancellations: [cancellation, ...(questItem.cancellations ?? [])],
+      compensationPreview: preview,
+      escrowLocked: state === "cancelled-before-approval" ? false : questItem.escrowLocked,
+    }));
+    addMissionActivity(
+      id,
+      actor === "worker" ? "Worker cancellation requested" : "Tasker cancellation requested",
+      `${statusLabels[state]}: ${reason}. Compensation preview ${currency(preview.workerCompensation)} worker / ${currency(preview.taskerRefund)} refund.`,
+    );
+  }
+
+  function editQuest(id: string) {
+    addMissionActivity(id, "Quest edit requested", "Tasker can modify quest details before worker approval in this demo.");
+  }
+
+  function deleteQuest(id: string) {
+    const quest = quests.find((item) => item.id === id);
+    if (!quest) return;
+    setQuests((current) => current.filter((item) => item.id !== id));
+    setMissionStates((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setWallet((current) => ({
+      ...current,
+      taskerBalance: current.taskerBalance + quest.reward + quest.itemFunds,
+    }));
+    if (selectedQuestId === id) {
+      const fallback = quests.find((item) => item.id !== id);
+      setSelectedQuestId(fallback?.id ?? "");
+    }
+  }
+
+  function completeCheckpoint(id: string, checkpointId: string, workerNote: string, proofName?: string) {
+    let updatedCheckpoint: CheckpointRecord | undefined;
+    updateQuest(id, (quest) => {
+      const checkpoints = (quest.checkpoints?.length ? quest.checkpoints : checkpointTemplatesForQuest(quest)).map(
+        (checkpoint, index) => {
+          if (checkpoint.id !== checkpointId) return checkpoint;
+          const seed = checkpoint.id.length * 17 + quest.title.length + index;
+          const confidence = 52 + (seed % 45);
+          const verificationStatus: VerificationState =
+            confidence >= 84 ? "Verified" : confidence >= 58 ? "Partially Verified" : "Unverified";
+          updatedCheckpoint = {
+            ...checkpoint,
+            timestamp: nowLabel(),
+            workerNote,
+            uploadedProof: proofName || checkpoint.uploadedProof || "mock-proof.jpg",
+            verificationStatus,
+            gps: `6.${5100 + (seed % 70)}, 3.${3800 + (seed % 90)}`,
+            campusArea: quest.campus || "Verified campus zone",
+            locationConfidence: confidence,
+            snapshot: `snapshot-${quest.id}-${checkpoint.id}.jpg`,
+            warning:
+              confidence < 84
+                ? "Location could not fully corroborate this checkpoint."
+                : undefined,
+          };
+          return updatedCheckpoint;
+        },
+      );
+      const nextQuest = { ...quest, checkpoints };
+      return { ...nextQuest, compensationPreview: calculateCompensation(nextQuest) };
+    });
+    if (updatedCheckpoint) {
+      completeMissionObjective(id, checkpointId, updatedCheckpoint.title);
+      addMissionActivity(
+        id,
+        "Checkpoint submitted",
+        `${updatedCheckpoint.title} is ${updatedCheckpoint.verificationStatus} with ${updatedCheckpoint.locationConfidence}% location confidence.`,
+      );
+    }
+  }
+
+  function uploadProofRecord(
+    id: string,
+    payload: Omit<ProofRecord, "id" | "createdAt">,
+  ) {
+    let proof: ProofRecord | undefined;
+    updateQuest(id, (quest) => {
+      proof = {
+        id: makeId("proof"),
+        createdAt: nowLabel(),
+        ...payload,
+      };
+      const checkpoints =
+        quest.type === "physical"
+          ? (quest.checkpoints?.length ? quest.checkpoints : checkpointTemplatesForQuest(quest)).map((checkpoint) => {
+              const shouldAttach =
+                checkpoint.id === payload.checkpointId ||
+                (!payload.checkpointId && !checkpoint.uploadedProof && checkpoint.proofRequired);
+              if (!shouldAttach) return checkpoint;
+              return {
+                ...checkpoint,
+                uploadedProof: payload.fileName || payload.proofType,
+                workerNote: payload.note || checkpoint.workerNote,
+                timestamp: nowLabel(),
+                verificationStatus:
+                  checkpoint.verificationStatus === "Verified"
+                    ? checkpoint.verificationStatus
+                    : "Partially Verified" as VerificationState,
+                locationConfidence: checkpoint.locationConfidence || 72,
+                snapshot: checkpoint.snapshot || `snapshot-${quest.id}-${checkpoint.id}.jpg`,
+                warning:
+                  checkpoint.warning ||
+                  "Location could not fully corroborate this checkpoint.",
+              };
+            })
+          : quest.checkpoints;
+      const onlineMilestones =
+        quest.type === "online"
+          ? (quest.onlineMilestones?.length ? quest.onlineMilestones : onlineMilestonesForQuest(quest)).map(
+              (milestone) => {
+                const shouldAttach =
+                  milestone.id === payload.milestoneId ||
+                  (!payload.milestoneId && !milestone.proofUpload);
+                if (!shouldAttach) return milestone;
+                return {
+                  ...milestone,
+                  proofUpload: payload.fileName || payload.proofType,
+                  workerExplanation: payload.note || milestone.workerExplanation,
+                  timestamp: nowLabel(),
+                  status: "Submitted" as OnlineMilestoneStatus,
+                };
+              },
+            )
+          : quest.onlineMilestones;
+      const nextQuest = {
+        ...quest,
+        proofs: [proof, ...(quest.proofs ?? [])],
+        proofText: payload.note || quest.proofText || "Proof uploaded.",
+        deliveryProof:
+          quest.type === "physical"
+            ? payload.fileName || payload.note || "Physical proof uploaded."
+            : quest.deliveryProof,
+        checkpoints,
+        onlineMilestones,
+      };
+      return {
+        ...nextQuest,
+        compensationPreview: calculateCompensation(nextQuest),
+      };
+    });
+    if (proof) {
+      addMissionActivity(
+        id,
+        "Proof uploaded",
+        `${proof.proofType} proof saved${proof.fileName ? `: ${proof.fileName}` : ""}.`,
+      );
+    }
+  }
+
+  function triggerSos(id: string, triggeredBy: UserRole) {
+    const alert: SafetyAlertRecord = {
+      id: makeId("sos"),
+      triggeredBy,
+      message: "This quest was marked for urgent Side Quests safety review.",
+      createdAt: nowLabel(),
+    };
+    updateQuest(id, (quest) => ({
+      ...quest,
+      safetyFlagged: true,
+      safetyAlerts: [alert, ...(quest.safetyAlerts ?? [])],
+    }));
+    addMissionActivity(
+      id,
+      "SOS triggered",
+      "Side Quests safety support was alerted and the quest was marked for urgent review.",
+    );
+  }
+
+  function reportIssue(
+    id: string,
+    payload: Omit<IssueReportRecord, "id" | "createdAt">,
+  ) {
+    const report: IssueReportRecord = {
+      id: makeId("report"),
+      createdAt: nowLabel(),
+      ...payload,
+    };
+    updateQuest(id, (quest) => ({
+      ...quest,
+      safetyFlagged: true,
+      issueReports: [report, ...(quest.issueReports ?? [])],
+    }));
+    addMissionActivity(id, "Issue reported", `${report.reason}: ${report.explanation || "No explanation provided."}`);
+    if (payload.escalateToDispute) {
+      openDispute(id, {
+        openedBy: payload.submittedBy === "worker" ? "worker" : "tasker",
+        reason: `Report escalated: ${payload.reason}`,
+        explanation: payload.explanation || "Report escalated to dispute.",
+        evidenceText: `Safety/report issue: ${payload.reason}`,
+      });
+    }
+  }
+
+  function flagCheckpoint(id: string, checkpointId: string) {
+    let checkpointTitle = "Checkpoint";
+    updateQuest(id, (quest) => {
+      const checkpoints = (quest.checkpoints?.length ? quest.checkpoints : checkpointTemplatesForQuest(quest)).map(
+        (checkpoint) => {
+          if (checkpoint.id !== checkpointId) return checkpoint;
+          checkpointTitle = checkpoint.title;
+          return {
+            ...checkpoint,
+            verificationStatus: "Disputed" as VerificationState,
+            warning: "Checkpoint was flagged for mediator review.",
+          };
+        },
+      );
+      const nextQuest = { ...quest, checkpoints, safetyFlagged: true };
+      return { ...nextQuest, compensationPreview: calculateCompensation(nextQuest) };
+    });
+    addMissionActivity(id, "Checkpoint flagged", `${checkpointTitle} was flagged for review.`);
+  }
+
+  function shareTrustedContact(id: string) {
+    updateQuest(id, (quest) => ({
+      ...quest,
+      trustedContactShared: true,
+    }));
+    addMissionActivity(
+      id,
+      "Trusted contact shared",
+      "Mock trusted contact sharing was enabled for this quest.",
+    );
+  }
+
+  function submitOnlineMilestone(
+    id: string,
+    milestoneId: string,
+    explanation: string,
+    proofUpload: string,
+    completionPercentageClaimed: number,
+  ) {
+    let milestoneTitle = "Online milestone";
+    updateQuest(id, (quest) => {
+      const onlineMilestones = (quest.onlineMilestones?.length ? quest.onlineMilestones : onlineMilestonesForQuest(quest)).map(
+        (milestone) => {
+          if (milestone.id !== milestoneId) return milestone;
+          milestoneTitle = milestone.title;
+          return {
+            ...milestone,
+            workerExplanation: explanation,
+            proofUpload: proofUpload || "mock-online-proof.png",
+            completionPercentageClaimed,
+            timestamp: nowLabel(),
+            status: "Submitted" as OnlineMilestoneStatus,
+          };
+        },
+      );
+      const nextQuest = { ...quest, onlineMilestones, proofText: explanation || quest.proofText };
+      return { ...nextQuest, compensationPreview: calculateCompensation(nextQuest) };
+    });
+    completeMissionObjective(id, milestoneId, milestoneTitle);
+    addMissionActivity(id, "Online proof submitted", `${milestoneTitle}: ${completionPercentageClaimed}% claimed.`);
+  }
+
+  function reviewOnlineMilestone(
+    id: string,
+    milestoneId: string,
+    status: OnlineMilestoneStatus,
+    feedback: string,
+  ) {
+    updateQuest(id, (quest) => {
+      const onlineMilestones = (quest.onlineMilestones ?? []).map((milestone) =>
+        milestone.id === milestoneId
+          ? {
+              ...milestone,
+              status,
+              taskerFeedback: feedback,
+              revisionRequest: status === "Revision Requested" ? feedback : milestone.revisionRequest,
+            }
+          : milestone,
+      );
+      const nextQuest = { ...quest, onlineMilestones };
+      return { ...nextQuest, compensationPreview: calculateCompensation(nextQuest) };
+    });
+    addMissionActivity(id, "Online milestone reviewed", `${status}: ${feedback || "No extra feedback."}`);
+  }
+
+  function askCopilot(id: string, prompt: string) {
+    const quest = quests.find((item) => item.id === id);
+    if (!quest || !prompt.trim()) return;
+    const response =
+      quest.type === "online"
+        ? "For this online quest, ask for staged proof: a short progress explanation, a screenshot or file link, and a final source handoff before payout."
+        : isVendorPurchaseQuest(quest)
+          ? `For this physical purchase quest, verify arrival at ${quest.vendorName || "the vendor"}, item selection, vendor confirmation, e-receipt, and safe handoff proof.`
+          : `For this campus quest, prioritize safe handoff at ${quest.safeHandoffPoint || "a campus safe zone"}, timestamped proof, and location confidence.`;
+    const message: CopilotMessage = {
+      id: makeId("copilot"),
+      prompt,
+      response,
+      createdAt: nowLabel(),
+    };
+    updateQuest(id, (questItem) => ({
+      ...questItem,
+      copilotMessages: [message, ...(questItem.copilotMessages ?? [])],
+    }));
+  }
+
   async function startQuest(id: string) {
     if (useSupabaseBackend) {
       const quest = quests.find((item) => item.id === id);
       try {
-        await startQuestInSupabase(id, quest?.type === "physical" || quest?.type === "vendor");
+        await startQuestInSupabase(id, quest?.type === "physical");
         await refreshFromSupabase();
         completeMissionObjective(id, "started", "Quest started");
         addMissionActivity(id, "Quest started", "Worker opened the mission route.");
@@ -1400,7 +2170,7 @@ function SideQuestsApp() {
     updateQuest(id, (quest) => ({
       ...quest,
       status: "in-progress",
-      liveTracking: quest.type === "physical" || quest.type === "vendor" ? "active" : quest.liveTracking,
+      liveTracking: quest.type === "physical" ? "active" : quest.liveTracking,
     }));
     completeMissionObjective(id, "started", "Quest started");
     addMissionActivity(id, "Quest started", "Worker opened the mission route.");
@@ -1451,7 +2221,7 @@ function SideQuestsApp() {
       ...quest,
       itemsPicked: true,
       status: "in-progress",
-      liveTracking: quest.type === "vendor" ? "active" : quest.liveTracking,
+      liveTracking: isVendorPurchaseQuest(quest) ? "active" : quest.liveTracking,
     }));
     completeMissionObjective(id, "picked", "Items picked");
   }
@@ -1680,6 +2450,7 @@ function SideQuestsApp() {
 
   const actions = {
     applyForQuest,
+    withdrawApplication,
     approveWorker,
     declineApplicant,
     closeApplications,
@@ -1693,6 +2464,18 @@ function SideQuestsApp() {
     openDispute,
     recommendDispute,
     finalizeDispute,
+    cancelQuest,
+    editQuest,
+    deleteQuest,
+    completeCheckpoint,
+    submitOnlineMilestone,
+    reviewOnlineMilestone,
+    askCopilot,
+    uploadProofRecord,
+    triggerSos,
+    reportIssue,
+    flagCheckpoint,
+    shareTrustedContact,
   };
 
   const missionControls = {
@@ -1705,13 +2488,12 @@ function SideQuestsApp() {
   };
 
   return currentView === "landing" ? (
-    <LandingPage
-      isMenuOpen={isMenuOpen}
-      scrolled={scrolled}
-      setCurrentView={setCurrentView}
-      setIsMenuOpen={setIsMenuOpen}
-      setIsPostQuestOpen={setIsPostQuestOpen}
-      stats={{ active: quests.length, completed: quests.filter((quest) => quest.status === "completed").length }}
+    <FeatureShowcaseLanding
+      onEnterApp={() => setCurrentView("app")}
+      onPostQuest={() => {
+        setCurrentView("app");
+        setIsPostQuestOpen(true);
+      }}
     />
   ) : (
     <AppDashboard
@@ -1754,180 +2536,6 @@ function SideQuestsApp() {
       useSupabaseBackend={useSupabaseBackend}
       onCreateQuest={createQuest}
     />
-  );
-}
-
-function LandingPage({
-  isMenuOpen,
-  scrolled,
-  setCurrentView,
-  setIsMenuOpen,
-  setIsPostQuestOpen,
-  stats,
-}: {
-  isMenuOpen: boolean;
-  scrolled: boolean;
-  setCurrentView: (view: "landing" | "app") => void;
-  setIsMenuOpen: (open: boolean) => void;
-  setIsPostQuestOpen: (open: boolean) => void;
-  stats: { active: number; completed: number };
-}) {
-  return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_20%_10%,rgba(124,58,237,0.22),transparent_28%),radial-gradient(circle_at_80%_5%,rgba(34,211,238,0.16),transparent_30%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--background)))]">
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.5 }}
-        className={`sticky top-0 z-50 w-full border-b backdrop-blur supports-[backdrop-filter]:bg-background/65 ${
-          scrolled ? "shadow-md shadow-black/20" : ""
-        }`}
-      >
-        <div className="container flex h-16 max-w-7xl items-center justify-between">
-          <Brand />
-          <nav className="hidden gap-6 md:flex">
-            <a href="#features" className="text-sm font-medium transition-colors hover:text-primary">
-              Features
-            </a>
-            <a href="#how-it-works" className="text-sm font-medium transition-colors hover:text-primary">
-              How It Works
-            </a>
-            <a href="#safety" className="text-sm font-medium transition-colors hover:text-primary">
-              Safety
-            </a>
-          </nav>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden rounded-full md:inline-flex"
-              onClick={() => setCurrentView("app")}
-            >
-              Enter App
-            </Button>
-            <Button
-              size="sm"
-              className="rounded-full bg-gradient-to-r from-violet-600 to-cyan-600 text-white"
-              onClick={() => {
-                setCurrentView("app");
-                setIsPostQuestOpen(true);
-              }}
-            >
-              Post a Quest
-            </Button>
-            <button className="md:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-          </div>
-        </div>
-      </motion.header>
-
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-background md:hidden"
-          >
-            <div className="container space-y-6 pt-24">
-              {["features", "how-it-works", "safety"].map((item) => (
-                <a
-                  key={item}
-                  href={`#${item}`}
-                  className="block text-lg font-medium capitalize"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.replaceAll("-", " ")}
-                </a>
-              ))}
-              <Button
-                className="w-full"
-                onClick={() => {
-                  setCurrentView("app");
-                  setIsMenuOpen(false);
-                }}
-              >
-                Enter App
-              </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <main className="flex-1">
-        <section className="w-full overflow-hidden py-14 md:py-24 lg:py-32">
-          <div className="container max-w-7xl px-4 md:px-6">
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={fadeIn}
-              className="flex flex-col items-center space-y-8 text-center"
-            >
-              <Badge className="rounded-full border-0 bg-gradient-to-r from-violet-500/15 to-cyan-500/15 px-4 py-1.5 text-cyan-100">
-                <Sparkles className="mr-2 h-3 w-3" />
-                Phase 2 local-state hackathon demo
-              </Badge>
-
-              <h1 className="max-w-5xl bg-gradient-to-r from-white via-violet-200 to-cyan-200 bg-clip-text text-4xl font-bold tracking-tighter text-transparent sm:text-5xl md:text-6xl lg:text-7xl">
-                Turn everyday tasks into quests
-              </h1>
-
-              <p className="max-w-2xl text-lg leading-8 text-muted-foreground md:text-xl">
-                A premium marketplace for online work and verified campus quests,
-                now with local quest creation, lifecycle actions, disputes, mock
-                escrow, vendor receipts, and role-based controls.
-              </p>
-
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <Button
-                  size="lg"
-                  className="rounded-full bg-gradient-to-r from-violet-600 to-cyan-600 text-white"
-                  onClick={() => setCurrentView("app")}
-                >
-                  Enter App
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="rounded-full"
-                  onClick={() => {
-                    setCurrentView("app");
-                    setIsPostQuestOpen(true);
-                  }}
-                >
-                  Post a Quest
-                </Button>
-              </div>
-
-              <div className="grid w-full max-w-4xl grid-cols-2 gap-6 pt-10 md:grid-cols-4">
-                {[
-                  { icon: Target, label: "Demo Quests", value: `${stats.active}` },
-                  { icon: CheckCircle, label: "Completed", value: `${stats.completed}` },
-                  { icon: Shield, label: "Verified Campuses", value: "5" },
-                  { icon: Award, label: "Local Persistence", value: "On" },
-                ].map((stat) => (
-                  <motion.div
-                    key={stat.label}
-                    variants={itemFadeIn}
-                    className="flex flex-col items-center gap-2 rounded-xl border bg-card/50 p-5 backdrop-blur"
-                  >
-                    <stat.icon className="h-8 w-8 text-primary" />
-                    <div className="text-2xl font-bold">{stat.value}</div>
-                    <div className="text-sm text-muted-foreground">{stat.label}</div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
-        </section>
-
-        <InfoSections />
-      </main>
-
-      <Footer />
-    </div>
   );
 }
 
@@ -1987,6 +2595,7 @@ function AppDashboard({
 }: {
   actions: {
     applyForQuest: (id: string, note: string, eta: string) => void;
+    withdrawApplication: (id: string) => void;
     approveWorker: (id: string, applicationId: string) => void;
     declineApplicant: (id: string, applicationId: string) => void;
     closeApplications: (id: string) => void;
@@ -2000,6 +2609,34 @@ function AppDashboard({
     openDispute: (id: string, input?: string | DisputePayload) => void;
     recommendDispute: (id: string) => void;
     finalizeDispute: (id: string, verdict: string) => void;
+    cancelQuest: (
+      id: string,
+      actor: CancellationActor,
+      reason: CancellationReason,
+      explanation: string,
+    ) => void;
+    editQuest: (id: string) => void;
+    deleteQuest: (id: string) => void;
+    completeCheckpoint: (id: string, checkpointId: string, workerNote: string, proofName?: string) => void;
+    submitOnlineMilestone: (
+      id: string,
+      milestoneId: string,
+      explanation: string,
+      proofUpload: string,
+      completionPercentageClaimed: number,
+    ) => void;
+    reviewOnlineMilestone: (
+      id: string,
+      milestoneId: string,
+      status: OnlineMilestoneStatus,
+      feedback: string,
+    ) => void;
+    askCopilot: (id: string, prompt: string) => void;
+    uploadProofRecord: (id: string, payload: Omit<ProofRecord, "id" | "createdAt">) => void;
+    triggerSos: (id: string, triggeredBy: UserRole) => void;
+    reportIssue: (id: string, payload: Omit<IssueReportRecord, "id" | "createdAt">) => void;
+    flagCheckpoint: (id: string, checkpointId: string) => void;
+    shareTrustedContact: (id: string) => void;
   };
   appSection: AppSection;
   authEmail: string;
@@ -2045,7 +2682,6 @@ function AppDashboard({
     );
     if (selectedTab === "online") return publishVisible.filter((quest) => quest.type === "online");
     if (selectedTab === "physical") return publishVisible.filter((quest) => quest.type === "physical");
-    if (selectedTab === "vendor") return publishVisible.filter((quest) => quest.type === "vendor");
     if (selectedTab === "my-quests") {
       if (userRole === "worker") return publishVisible.filter((quest) => quest.worker === "You");
       return quests.filter((quest) => quest.tasker === "You");
@@ -2082,6 +2718,14 @@ function AppDashboard({
   const selectedMission = selectedQuest
     ? ensureMissionState(missionStates, selectedQuest)
     : undefined;
+  const vendorPaymentRecords = useMemo(
+    () => vendorPaymentRecordsFromQuests(quests),
+    [quests],
+  );
+  const vendorEscrowReleased = vendorPaymentRecords.reduce(
+    (sum, record) => sum + record.amount,
+    0,
+  );
   const unreadMessages = Object.values(missionStates).reduce(
     (sum, mission) => sum + mission.unreadCount,
     0,
@@ -2105,9 +2749,9 @@ function AppDashboard({
     <Tabs
       value={selectedTab}
       onValueChange={(value) => setSelectedTab(value as DashboardTab)}
-      className="space-y-4"
+      className="min-w-0 space-y-4"
     >
-      <TabsList className="grid h-auto w-full grid-cols-2 lg:grid-cols-5">
+      <TabsList className="grid h-auto w-full min-w-0 grid-cols-2 lg:grid-cols-4">
         <TabsTrigger value="online">
           <Globe className="mr-2 h-4 w-4" />
           Online
@@ -2115,10 +2759,6 @@ function AppDashboard({
         <TabsTrigger value="physical">
           <MapPin className="mr-2 h-4 w-4" />
           Physical
-        </TabsTrigger>
-        <TabsTrigger value="vendor">
-          <ShoppingBag className="mr-2 h-4 w-4" />
-          Vendor
         </TabsTrigger>
         <TabsTrigger value="my-quests">
           <Briefcase className="mr-2 h-4 w-4" />
@@ -2130,8 +2770,8 @@ function AppDashboard({
         </TabsTrigger>
       </TabsList>
 
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <div className="relative flex-1">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search quests..." className="pl-10" />
         </div>
@@ -2142,26 +2782,28 @@ function AppDashboard({
       </div>
 
       <TabsContent value="online">
-        <QuestGrid actions={actions} quests={visibleQuests} userRole={userRole} />
+        <div className="min-w-0 space-y-3">
+          <QuestFeedTypeHeader type="online" />
+          <QuestGrid actions={actions} quests={visibleQuests} userRole={userRole} />
+        </div>
       </TabsContent>
       <TabsContent value="physical">
-        <QuestGrid actions={actions} quests={visibleQuests} userRole={userRole} />
-      </TabsContent>
-      <TabsContent value="vendor">
-        <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]">
-          <div className="min-w-0">
-            <QuestGrid actions={actions} quests={visibleQuests} userRole={userRole} />
-          </div>
-          <div className="min-w-0">
-            <VendorRulesCard />
-          </div>
+        <div className="min-w-0 space-y-3">
+          <QuestFeedTypeHeader type="physical" />
+          <QuestGrid actions={actions} quests={visibleQuests} userRole={userRole} />
         </div>
       </TabsContent>
       <TabsContent value="my-quests">
         <QuestGrid actions={actions} quests={visibleQuests} userRole={userRole} />
       </TabsContent>
       <TabsContent value="disputes">
-        <DisputesPanel actions={actions} disputes={disputes} userRole={userRole} />
+        <DisputesPanel
+          actions={actions}
+          disputes={disputes}
+          missionStates={missionStates}
+          quests={quests}
+          userRole={userRole}
+        />
       </TabsContent>
     </Tabs>
   );
@@ -2179,7 +2821,15 @@ function AppDashboard({
       );
     }
     if (appSection === "disputes") {
-      return <DisputesPanel actions={actions} disputes={disputes} userRole={userRole} />;
+      return (
+        <DisputesPanel
+          actions={actions}
+          disputes={disputes}
+          missionStates={missionStates}
+          quests={quests}
+          userRole={userRole}
+        />
+      );
     }
     if (appSection === "receipts") {
       return <VendorReceiptsPanel quests={quests} />;
@@ -2203,11 +2853,14 @@ function AppDashboard({
             useSupabaseBackend={useSupabaseBackend}
           />
           <WalletCards
-            balance={balanceForRole}
+            balance={userRole === "vendor" ? vendorEscrowReleased : balanceForRole}
             escrowLocked={escrowLocked}
             setShowBalance={setShowBalance}
             showBalance={showBalance}
+            userRole={userRole}
+            vendorEscrowReleased={vendorEscrowReleased}
             vendorPaid={vendorPaid}
+            vendorPaymentRecords={vendorPaymentRecords}
             workerReleased={workerReleased}
           />
           <MissionOverview
@@ -2215,6 +2868,8 @@ function AppDashboard({
             missionStates={missionStates}
             onOpenMission={missionControls.openMissionWorkspace}
             quests={quests}
+            userRole={userRole}
+            vendorPaymentRecords={vendorPaymentRecords}
           />
         </div>
       );
@@ -2261,8 +2916,8 @@ function AppDashboard({
         </div>
       </header>
 
-      <div className="container max-w-7xl py-6 pb-28 lg:pb-8">
-        <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
+      <div className="container max-w-7xl overflow-hidden py-6 pb-28 lg:pb-8">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
           <AppSidebar
             activeSection={appSection}
             counts={sidebarCounts}
@@ -2271,8 +2926,8 @@ function AppDashboard({
             setActiveSection={setAppSection}
           />
           <main className="min-w-0 space-y-6">
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-              <div>
+            <div className="flex min-w-0 flex-col justify-between gap-4 md:flex-row md:items-center">
+              <div className="min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Badge className="border-violet-500/20 bg-violet-500/10 text-violet-100" variant="outline">
                     Mission Control
@@ -2283,14 +2938,14 @@ function AppDashboard({
                     </Badge>
                   )}
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight">
+                <h1 className="break-words text-3xl font-bold tracking-tight">
                   {appSection === "overview" ? "Dashboard" : sectionTitle(appSection)}
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="break-words text-muted-foreground">
                   Manage quests, check-ins, chat, safety, and mission progress as {roleLabels[userRole]}.
                 </p>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
                 <Select
                   value={selectedQuest?.id ?? ""}
                   onValueChange={(value) => {
@@ -2298,19 +2953,51 @@ function AppDashboard({
                     missionControls.openMissionWorkspace(value, appSection === "overview" ? "active-quest" : appSection);
                   }}
                 >
-                  <SelectTrigger className="w-full sm:w-[260px]">
-                    <SelectValue placeholder="Select active quest" />
+                  <SelectTrigger className="w-full max-w-full sm:w-[300px]">
+                    {selectedQuest ? (
+                      <div className="flex min-w-0 items-center gap-2 text-left">
+                        <QuestSelectorTypeBadge type={selectedQuest.type} />
+                        <span className="min-w-0 truncate">{selectedQuest.title}</span>
+                      </div>
+                    ) : (
+                      <SelectValue placeholder="Select active quest" />
+                    )}
                   </SelectTrigger>
-                  <SelectContent>
-                    {quests.map((quest) => (
-                      <SelectItem key={quest.id} value={quest.id}>
-                        {quest.title}
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="w-[min(92vw,420px)]">
+                    {(["online", "physical"] as const).map((type) => {
+                      const typedQuests = quests.filter((quest) => quest.type === type);
+                      const sectionLabel =
+                        type === "online"
+                          ? "Online Quests"
+                          : "Physical Campus Quests";
+
+                      return (
+                        <SelectGroup key={type}>
+                          <SelectLabel>{sectionLabel}</SelectLabel>
+                          {typedQuests.length === 0 ? (
+                            <div className="px-2 py-1.5 text-xs text-muted-foreground">No quests</div>
+                          ) : (
+                            typedQuests.map((quest) => (
+                              <SelectItem key={quest.id} value={quest.id}>
+                                <div className="flex min-w-0 flex-col gap-1 py-1">
+                                  <span className="min-w-0 truncate font-medium">{quest.title}</span>
+                                  <span className="flex flex-wrap gap-1.5">
+                                    <QuestSelectorTypeBadge type={quest.type} />
+                                    <Badge className={`px-1.5 py-0 text-[10px] ${statusClass(quest.status)}`} variant="outline">
+                                      {statusLabels[quest.status]}
+                                    </Badge>
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectGroup>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 <Select value={userRole} onValueChange={(value) => setUserRole(value as UserRole)}>
-                  <SelectTrigger className="w-full sm:w-[190px]">
+                  <SelectTrigger className="w-full max-w-full sm:w-[190px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -2502,12 +3189,54 @@ function MissionOverview({
   missionStates,
   onOpenMission,
   quests,
+  userRole,
+  vendorPaymentRecords,
 }: {
   activeQuests: Quest[];
   missionStates: Record<string, MissionState>;
   onOpenMission: (id: string) => void;
   quests: Quest[];
+  userRole: UserRole;
+  vendorPaymentRecords: VendorPaymentRecord[];
 }) {
+  if (userRole === "vendor") {
+    const vendorCards = [
+      ["Vendor Orders", vendorPaymentRecords.length, "Successful vendor transactions", ShoppingBag],
+      ["Item Confirmations", vendorPaymentRecords.length, "Items reviewed before e-receipt", ReceiptText],
+    ] as const;
+
+    return (
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,400px)]">
+        <div className="min-w-0 space-y-4">
+          <Card className="border-cyan-500/20 bg-cyan-500/10">
+            <CardHeader>
+              <CardTitle>Vendor Operations</CardTitle>
+              <CardDescription>
+                Vendors do not accept or complete quests. Workers bring item baskets, escrow pays the vendor wallet
+                directly, vendors confirm the item list, and an e-receipt is generated for the tasker.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+          <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4">
+            {vendorCards.map(([title, value, note, Icon]) => (
+              <Card key={title}>
+                <CardHeader>
+                  <Icon className="h-5 w-5 text-cyan-300" />
+                  <CardTitle className="text-2xl">{value}</CardTitle>
+                  <CardDescription>{title}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{note}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+        <RecentVendorPayments records={vendorPaymentRecords} />
+      </div>
+    );
+  }
+
   const cards = [
     ["Total Quests", quests.length, "Posted, accepted, or available", Target],
     ["Active Missions", activeQuests.length, "Accepted work in motion", Radio],
@@ -2520,8 +3249,8 @@ function MissionOverview({
   ] as const;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-      <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,360px)]">
+      <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4">
         {cards.map(([title, value, note, Icon]) => (
           <Card key={title}>
             <CardHeader>
@@ -2544,17 +3273,17 @@ function MissionOverview({
           {(activeQuests.length ? activeQuests : quests.slice(0, 3)).map((quest) => (
             <button
               key={quest.id}
-              className="w-full rounded-lg border bg-background/35 p-3 text-left transition hover:border-primary/50"
+              className="min-w-0 w-full rounded-lg border bg-background/35 p-3 text-left transition hover:border-primary/50"
               onClick={() => onOpenMission(quest.id)}
             >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{quest.title}</span>
+              <div className="flex min-w-0 flex-col items-start justify-between gap-2 sm:flex-row">
+                <span className="min-w-0 break-words font-medium">{quest.title}</span>
                 <Badge className={statusClass(quest.status)} variant="outline">
                   {statusLabels[quest.status]}
                 </Badge>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {quest.type} mission · {currency(quest.reward)} reward
+              <p className="mt-1 break-words text-xs text-muted-foreground">
+                {questTypeLabels[quest.type]} · {currency(quest.reward)} reward
               </p>
             </button>
           ))}
@@ -2564,6 +3293,45 @@ function MissionOverview({
   );
 }
 
+function RecentVendorPayments({ records }: { records: VendorPaymentRecord[] }) {
+  return (
+    <Card className="min-w-0">
+      <CardHeader>
+        <CardTitle>Recent Vendor Payments</CardTitle>
+        <CardDescription>Successful escrow releases for confirmed vendor purchases.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {records.length === 0 ? (
+          <div className="rounded-lg border bg-background/35 p-4 text-sm text-muted-foreground">
+            No vendor payments yet. Payments will appear here when escrow releases funds for confirmed vendor purchases.
+          </div>
+        ) : (
+          records.map((record) => (
+            <div key={record.id} className="min-w-0 rounded-lg border bg-background/35 p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="break-words font-medium">{record.questTitle}</p>
+                  <p className="break-words text-xs text-muted-foreground">
+                    {record.itemCount} items · {record.vendorWallet}
+                  </p>
+                </div>
+                <Badge className="w-fit border-emerald-500/25 bg-emerald-500/12 text-emerald-100" variant="outline">
+                  Successful
+                </Badge>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant="secondary">{currency(record.amount)} received</Badge>
+                <Badge variant="outline">
+                  {record.receiptGenerated ? "Receipt generated" : "Receipt pending"}
+                </Badge>
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 function AcceptedQuestsPanel({
   actions,
   onOpenMission,
@@ -2580,63 +3348,100 @@ function AcceptedQuestsPanel({
       <Card>
         <CardHeader>
           <CardTitle>No accepted quests yet</CardTitle>
-          <CardDescription>Switch to Worker, accept a quest, then open its mission workspace.</CardDescription>
+          <CardDescription>Switch to Worker, apply to a quest, then open its mission workspace after approval.</CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {quests.map((quest) => (
-        <Card key={quest.id} className="min-w-0 bg-card/65 backdrop-blur-xl">
+  const grouped: Record<QuestType, Quest[]> = {
+    online: quests.filter((quest) => quest.type === "online"),
+    physical: quests.filter((quest) => quest.type === "physical"),
+  };
+  const defaultType: QuestType = grouped.online.length ? "online" : "physical";
+
+  function renderAcceptedList(type: QuestType) {
+    const typedQuests = grouped[type];
+    if (typedQuests.length === 0) {
+      return (
+        <Card>
           <CardHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <CardTitle className="text-lg">{quest.title}</CardTitle>
-                <CardDescription>
-                  {quest.type} quest · Due {new Date(quest.deadline).toLocaleDateString()}
-                </CardDescription>
-              </div>
-              <Badge className={statusClass(quest.status)} variant="outline">
-                {statusLabels[quest.status]}
-              </Badge>
-            </div>
+            <CardTitle>No {questTypeLabels[type].toLowerCase()} accepted</CardTitle>
+            <CardDescription>Accepted missions of this type will appear here.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-lg border bg-background/35 p-3">
-                <p className="text-xs text-muted-foreground">Reward</p>
-                <p className="font-semibold">{currency(quest.reward)}</p>
-              </div>
-              <div className="rounded-lg border bg-background/35 p-3">
-                <p className="text-xs text-muted-foreground">People</p>
-                <p className="font-semibold">{quest.tasker} / {quest.worker}</p>
-              </div>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Button className="w-full" onClick={() => onOpenMission(quest.id)}>
-                Open Mission Workspace
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-            {userRole === "worker" && (canWorkerOpenDispute(quest) || hasDisputeOpened(quest)) && (
-              <PayoutDisputeBlock
-                actions={actions}
-                quest={quest}
-              />
-            )}
-          </CardContent>
         </Card>
-      ))}
-    </div>
+      );
+    }
+
+    return (
+      <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] gap-4">
+        {typedQuests.map((quest) => (
+          <Card key={quest.id} className="min-w-0 bg-card/65 backdrop-blur-xl">
+            <CardHeader>
+              <div className="flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row">
+                <div className="min-w-0">
+                  <CardTitle className="break-words text-lg">{quest.title}</CardTitle>
+                  <CardDescription className="mt-2 flex flex-wrap gap-2">
+                    <QuestTypeBadge type={quest.type} />
+                    <Badge variant="outline">Due {new Date(quest.deadline).toLocaleDateString()}</Badge>
+                  </CardDescription>
+                </div>
+                <Badge className={`${statusClass(quest.status)} max-w-full`} variant="outline">
+                  {statusLabels[quest.status]}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 text-sm sm:grid-cols-2">
+                <div className="rounded-lg border bg-background/35 p-3">
+                  <p className="text-xs text-muted-foreground">Reward</p>
+                  <p className="font-semibold">{currency(quest.reward)}</p>
+                </div>
+                <div className="rounded-lg border bg-background/35 p-3">
+                  <p className="text-xs text-muted-foreground">People</p>
+                  <p className="break-words font-semibold">{quest.tasker} / {quest.worker}</p>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button className="w-full" onClick={() => onOpenMission(quest.id)}>
+                  Open Mission Workspace
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {userRole === "worker" && (canWorkerOpenDispute(quest) || hasDisputeOpened(quest)) && (
+                <PayoutDisputeBlock actions={actions} quest={quest} />
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <Tabs defaultValue={defaultType} className="space-y-4">
+      <TabsList className="grid h-auto w-full grid-cols-2">
+        <TabsTrigger value="online">Online Accepted</TabsTrigger>
+        <TabsTrigger value="physical">Physical Accepted</TabsTrigger>
+      </TabsList>
+      <TabsContent value="online">{renderAcceptedList("online")}</TabsContent>
+      <TabsContent value="physical">{renderAcceptedList("physical")}</TabsContent>
+    </Tabs>
   );
 }
-
 function canWorkerOpenDispute(quest: Quest) {
   return (
     quest.worker === "You" &&
-    ["accepted", "worker-approved", "in-progress", "awaiting-confirmation"].includes(quest.status)
+    [
+      "accepted",
+      "worker-approved",
+      "in-progress",
+      "awaiting-confirmation",
+      "cancelled-before-start",
+      "cancelled-mid-mission",
+      "cancelled-after-submission",
+      "cancelled-after-vendor-payment",
+    ].includes(quest.status)
   );
 }
 
@@ -2688,7 +3493,7 @@ function DisputeDialogButton({
         {label}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{openedBy === "worker" ? "Worker Dispute" : "Tasker Dispute"}</DialogTitle>
             <DialogDescription>
@@ -2748,32 +3553,153 @@ function DisputeDialogButton({
   );
 }
 
+function CancellationDialogButton({
+  actor,
+  disabled = false,
+  label = "Cancel Quest",
+  onSubmit,
+  quest,
+  triggerClassName,
+}: {
+  actor: CancellationActor;
+  disabled?: boolean;
+  label?: string;
+  onSubmit: (reason: CancellationReason, explanation: string) => void;
+  quest: Quest;
+  triggerClassName?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState<CancellationReason>("no longer needed");
+  const [explanation, setExplanation] = useState("");
+  const preview = calculateCompensation(quest);
+  const warning =
+    quest.vendorPaidAmount > 0
+      ? "Vendor item funds were already paid. Cancellation should go to review before any refund decision."
+      : quest.proofText || quest.deliveryProof
+        ? "Proof has already been submitted. Cancellation will preserve evidence for compensation review."
+        : quest.status === "in-progress"
+          ? "Mission has started. Worker compensation is based on verified effort."
+          : quest.worker
+            ? "Worker was approved. A small compensation preview may apply."
+            : "No worker has been approved yet. Tasker can cancel freely.";
+
+  function submit() {
+    onSubmit(reason, explanation || warning);
+    setOpen(false);
+    setExplanation("");
+  }
+
+  return (
+    <>
+      <Button
+        className={triggerClassName}
+        disabled={disabled}
+        variant="outline"
+        onClick={() => setOpen(true)}
+      >
+        {label}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{actor === "tasker" ? "Tasker Cancellation" : "Worker Cancellation"}</DialogTitle>
+            <DialogDescription>
+              Side Quests estimates fair compensation before changing the mission state.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100">
+              {warning}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border bg-background/35 p-3">
+                <p className="text-xs text-muted-foreground">Verified effort</p>
+                <p className="text-xl font-bold">{preview.effortPercent}%</p>
+              </div>
+              <div className="rounded-lg border bg-background/35 p-3">
+                <p className="text-xs text-muted-foreground">Worker comp</p>
+                <p className="text-xl font-bold text-emerald-200">{currency(preview.workerCompensation)}</p>
+              </div>
+              <div className="rounded-lg border bg-background/35 p-3">
+                <p className="text-xs text-muted-foreground">Tasker refund</p>
+                <p className="text-xl font-bold text-cyan-200">{currency(preview.taskerRefund)}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Cancellation reason</Label>
+              <Select value={reason} onValueChange={(value) => setReason(value as CancellationReason)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {cancellationReasons.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Explanation</Label>
+              <Textarea
+                placeholder="Explain why the mission should stop..."
+                value={explanation}
+                onChange={(event) => setExplanation(event.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Keep Mission
+            </Button>
+            <Button variant="destructive" onClick={submit}>
+              Confirm Cancellation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 function WalletCards({
   balance,
   escrowLocked,
   setShowBalance,
   showBalance,
+  userRole,
+  vendorEscrowReleased,
   vendorPaid,
+  vendorPaymentRecords,
   workerReleased,
 }: {
   balance: number;
   escrowLocked: number;
   setShowBalance: (show: boolean) => void;
   showBalance: boolean;
+  userRole: UserRole;
+  vendorEscrowReleased: number;
   vendorPaid: number;
+  vendorPaymentRecords: VendorPaymentRecord[];
   workerReleased: number;
 }) {
-  const cards = [
-    ["Escrow Locked", currency(escrowLocked), "Tasker funds held safely", Target],
-    ["Vendor Paid", currency(vendorPaid), "Item funds paid to vendor wallets", ShoppingBag],
-    ["Worker Released", currency(workerReleased), "Rewards released to workers", CheckCircle],
-  ] as const;
+  const isVendor = userRole === "vendor";
+  const cards = isVendor
+    ? ([
+        ["Escrow Released", currency(vendorEscrowReleased), "Amount released by escrow", CheckCircle],
+      ] as const)
+    : ([
+        ["Escrow Locked", currency(escrowLocked), "Tasker funds held safely", Target],
+        ["Vendor Paid", currency(vendorPaid), "Item funds paid to vendor wallets", ShoppingBag],
+        ["Worker Released", currency(workerReleased), "Rewards released to workers", CheckCircle],
+      ] as const);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Role Balance</CardTitle>
+          <CardTitle className="text-sm font-medium">{isVendor ? "Vendor Balance" : "Role Balance"}</CardTitle>
           <button onClick={() => setShowBalance(!showBalance)}>
             {showBalance ? (
               <Eye className="h-4 w-4 text-muted-foreground" />
@@ -2783,10 +3709,10 @@ function WalletCards({
           </button>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{showBalance ? currency(balance) : "******"}</div>
-          <p className="text-xs text-muted-foreground">
+          <div className="break-words text-2xl font-bold">{showBalance ? currency(balance) : "******"}</div>
+          <p className="break-words text-xs text-muted-foreground">
             <TrendingUp className="mr-1 inline h-3 w-3" />
-            Fake local wallet only
+            {isVendor ? `${vendorPaymentRecords.length} confirmed vendor payments` : "Fake local wallet only"}
           </p>
         </CardContent>
       </Card>
@@ -2797,8 +3723,8 @@ function WalletCards({
             <Icon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{value}</div>
-            <p className="text-xs text-muted-foreground">{note}</p>
+            <div className="break-words text-2xl font-bold">{value}</div>
+            <p className="break-words text-xs text-muted-foreground">{note}</p>
           </CardContent>
         </Card>
       ))}
@@ -2872,7 +3798,7 @@ function BackendStatusCard({
               Sign out
             </Button>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]">
+            <div className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
               <Input
                 placeholder="email"
                 type="email"
@@ -2940,17 +3866,18 @@ function MissionWorkspace({
   const showAll = focus === "active-quest";
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6 overflow-hidden">
+      {!showAll && <QuestContextBanner quest={quest} section={sectionTitle(focus)} />}
       {showAll && (
-        <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,360px)]">
           <QuestSummaryCard quest={quest} />
           <ProgressCard completed={completed} progress={progress} total={total} />
         </div>
       )}
 
       {showAll ? (
-        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-4">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <div className="min-w-0 space-y-4">
             <MissionObjectivesPanel
               actions={actions}
               mission={mission}
@@ -2958,70 +3885,120 @@ function MissionWorkspace({
               quest={quest}
               userRole={userRole}
             />
-            <CheckInsPanel mission={mission} />
+            {quest.type === "physical" ? (
+              <PhysicalCheckpointPanel actions={actions} quest={quest} userRole={userRole} />
+            ) : (
+              <OnlineProgressPanel actions={actions} quest={quest} userRole={userRole} />
+            )}
+            <CheckInsPanel mission={mission} quest={quest} />
             <ActivityTimeline mission={mission} />
           </div>
-          <div className="space-y-4">
-            <LocationMockCard mission={mission} missionControls={missionControls} quest={quest} />
+          <div className="min-w-0 space-y-4">
+            <EffortCompensationCard quest={quest} />
+            <QuestCopilotPanel actions={actions} quest={quest} />
+            {quest.type === "physical" && (
+              <LocationMockCard mission={mission} missionControls={missionControls} quest={quest} />
+            )}
             <MissionChatPanel
               mission={mission}
               missionControls={missionControls}
               quest={quest}
               userRole={userRole}
             />
-            {(quest.type === "physical" || quest.type === "vendor") && (
-              <SafetyCenterPanel quest={quest} />
-            )}
+            <SafetyCenterPanel actions={actions} quest={quest} userRole={userRole} />
           </div>
         </div>
       ) : null}
 
       {focus === "objectives" && (
-        <MissionObjectivesPanel
-          actions={actions}
-          mission={mission}
-          missionControls={missionControls}
-          quest={quest}
-          userRole={userRole}
-        />
+        <div className="min-w-0 space-y-4">
+          <MissionObjectivesPanel
+            actions={actions}
+            mission={mission}
+            missionControls={missionControls}
+            quest={quest}
+            userRole={userRole}
+          />
+          {quest.type === "physical" ? (
+            <PhysicalCheckpointPanel actions={actions} quest={quest} userRole={userRole} />
+          ) : (
+            <OnlineProgressPanel actions={actions} quest={quest} userRole={userRole} />
+          )}
+          <QuestCopilotPanel actions={actions} quest={quest} />
+        </div>
       )}
-      {focus === "check-ins" && <CheckInsPanel mission={mission} />}
+      {focus === "check-ins" && (
+        <div className="min-w-0 space-y-4">
+          <CheckInsPanel mission={mission} quest={quest} />
+          {quest.type === "physical" ? (
+            <PhysicalCheckpointPanel actions={actions} quest={quest} userRole={userRole} />
+          ) : (
+            <OnlineProgressPanel actions={actions} quest={quest} userRole={userRole} />
+          )}
+          <EffortCompensationCard quest={quest} />
+        </div>
+      )}
       {focus === "chat" && (
-        <MissionChatPanel
-          mission={mission}
-          missionControls={missionControls}
-          quest={quest}
-          userRole={userRole}
-        />
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,360px)]">
+          <MissionChatPanel
+            mission={mission}
+            missionControls={missionControls}
+            quest={quest}
+            userRole={userRole}
+          />
+          <QuestCopilotPanel actions={actions} quest={quest} />
+        </div>
       )}
       {focus === "receipts" && <VendorReceiptsPanel quests={[quest]} />}
       {focus === "safety" && (
-        <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-          <SafetyCenterPanel quest={quest} />
-          <LocationMockCard mission={mission} missionControls={missionControls} quest={quest} />
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,360px)]">
+          <SafetyCenterPanel actions={actions} quest={quest} userRole={userRole} />
+          {quest.type === "physical" ? (
+            <LocationMockCard mission={mission} missionControls={missionControls} quest={quest} />
+          ) : (
+            <EffortCompensationCard quest={quest} />
+          )}
         </div>
       )}
     </div>
   );
 }
 
+function QuestContextBanner({ quest, section }: { quest: Quest; section: string }) {
+  return (
+    <Card className="border-white/10 bg-card/55">
+      <CardContent className="flex min-w-0 flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{section}</p>
+          <p className="mt-1 break-words font-semibold">{quest.title}</p>
+        </div>
+        <QuestTypeBadge type={quest.type} />
+      </CardContent>
+    </Card>
+  );
+}
+
 function QuestSummaryCard({ quest }: { quest: Quest }) {
+  const latestCancellation = quest.cancellations?.[0];
   return (
     <Card className="overflow-hidden bg-card/70 backdrop-blur-xl">
       <CardHeader>
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-          <div>
-            <CardTitle className="text-2xl">{quest.title}</CardTitle>
-            <CardDescription className="mt-2 max-w-2xl">{quest.description}</CardDescription>
+        <div className="flex min-w-0 flex-col justify-between gap-4 md:flex-row md:items-start">
+          <div className="min-w-0">
+            <div className="mb-3">
+              <QuestTypeBadge type={quest.type} />
+            </div>
+            <CardTitle className="break-words text-2xl">{quest.title}</CardTitle>
+            <CardDescription className="mt-2 max-w-2xl break-words">{quest.description}</CardDescription>
           </div>
-          <Badge className={statusClass(quest.status)} variant="outline">
+          <Badge className={`${statusClass(quest.status)} max-w-full`} variant="outline">
             {statusLabels[quest.status]}
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <CardContent className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-3">
         {[
-          ["Type", quest.type === "online" ? "Online" : quest.type === "vendor" ? "Vendor" : "Physical"],
+          ["Type", quest.type === "online" ? "Online" : "Physical"],
           ["Reward", currency(quest.reward)],
           ["Tasker", quest.tasker],
           ["Worker", quest.worker || "Unassigned"],
@@ -3030,12 +4007,23 @@ function QuestSummaryCard({ quest }: { quest: Quest }) {
           ["Location", quest.location || "Online"],
           ["Vendor", quest.vendorName || "None"],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-lg border bg-background/35 p-3">
+          <div key={label} className="min-w-0 overflow-hidden rounded-lg border bg-background/35 p-3">
             <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="mt-1 truncate font-semibold">{value}</p>
+            <p className="mt-1 break-words font-semibold">{value}</p>
           </div>
         ))}
       </CardContent>
+      {latestCancellation && (
+        <CardContent className="pt-0">
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100">
+            <p className="font-semibold">{statusLabels[latestCancellation.state]}</p>
+            <p className="mt-1">
+              Opened by {latestCancellation.actor}: {latestCancellation.reason}. Worker compensation preview{" "}
+              {currency(latestCancellation.workerCompensation)}; tasker refund {currency(latestCancellation.taskerRefund)}.
+            </p>
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 }
@@ -3067,6 +4055,397 @@ function ProgressCard({ completed, progress, total }: { completed: number; progr
   );
 }
 
+function EffortCompensationCard({ quest }: { quest: Quest }) {
+  const preview = quest.compensationPreview ?? calculateCompensation(quest);
+  return (
+    <Card className="border-cyan-500/20 bg-cyan-500/10">
+      <CardHeader>
+        <CardTitle>Effort Compensation</CardTitle>
+        <CardDescription>
+          Fairness preview for cancellations, disputes, and mediator review.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-lg border bg-background/35 p-3">
+            <p className="text-xs text-muted-foreground">Verified progress</p>
+            <p className="text-2xl font-bold">{preview.effortPercent}%</p>
+          </div>
+          <div className="rounded-lg border bg-background/35 p-3">
+            <p className="text-xs text-muted-foreground">Worker compensation</p>
+            <p className="text-2xl font-bold text-emerald-200">{currency(preview.workerCompensation)}</p>
+          </div>
+          <div className="rounded-lg border bg-background/35 p-3">
+            <p className="text-xs text-muted-foreground">Tasker refund</p>
+            <p className="text-2xl font-bold text-cyan-200">{currency(preview.taskerRefund)}</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {preview.breakdown.slice(0, 5).map((item) => (
+            <div key={item} className="rounded-lg border bg-background/35 p-2 text-xs text-muted-foreground">
+              {item}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PhysicalCheckpointPanel({
+  actions,
+  quest,
+  userRole,
+}: {
+  actions: QuestActions;
+  quest: Quest;
+  userRole: UserRole;
+}) {
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [files, setFiles] = useState<Record<string, string>>({});
+  const checkpoints = quest.checkpoints?.length ? quest.checkpoints : checkpointTemplatesForQuest(quest);
+  if (quest.type !== "physical") return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>Checkpoint Verification</CardTitle>
+          <QuestTypeBadge type="physical" />
+        </div>
+        <CardDescription>
+          Campus checkpoints use proof, worker notes, mock GPS corroboration, and effort weights.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {checkpoints.map((checkpoint) => (
+          <div key={checkpoint.id} className="min-w-0 rounded-lg border bg-background/35 p-3">
+            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="break-words font-semibold">{checkpoint.title}</p>
+                  <Badge variant="outline">{checkpoint.effortWeight}% effort</Badge>
+                  <Badge
+                    className={
+                      checkpoint.verificationStatus === "Verified"
+                        ? "border-emerald-500/25 bg-emerald-500/12 text-emerald-100"
+                        : checkpoint.verificationStatus === "Partially Verified"
+                          ? "border-amber-500/25 bg-amber-500/12 text-amber-100"
+                          : checkpoint.verificationStatus === "Disputed"
+                            ? "border-rose-500/25 bg-rose-500/12 text-rose-100"
+                            : "border-zinc-500/25 bg-zinc-500/12 text-zinc-200"
+                    }
+                    variant="outline"
+                  >
+                    {checkpoint.verificationStatus}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">{checkpoint.description}</p>
+                <div className="mt-3 flex min-w-0 flex-wrap gap-2 text-xs">
+                  <Badge variant="outline">Campus: {checkpoint.campusArea}</Badge>
+                  <Badge variant="outline">GPS: {checkpoint.gps}</Badge>
+                  <Badge variant="outline">Confidence: {checkpoint.locationConfidence || 0}%</Badge>
+                  {checkpoint.timestamp && <Badge variant="outline">{checkpoint.timestamp}</Badge>}
+                  {checkpoint.snapshot && <Badge variant="secondary">{checkpoint.snapshot}</Badge>}
+                </div>
+                {checkpoint.warning && (
+                  <p className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 text-xs text-amber-100">
+                    {checkpoint.warning}
+                  </p>
+                )}
+                {(checkpoint.workerNote || checkpoint.uploadedProof) && (
+                  <div className="mt-3 min-w-0 rounded-lg border bg-card/60 p-3 text-sm text-muted-foreground">
+                    <p className="break-words">{checkpoint.workerNote || "No worker note."}</p>
+                    <p className="mt-1 break-words text-xs">Proof: {checkpoint.uploadedProof || "No proof file."}</p>
+                  </div>
+                )}
+              </div>
+              {userRole === "worker" && (
+                <div className="min-w-0 space-y-2 lg:w-[260px]">
+                  <Textarea
+                    placeholder="Checkpoint note"
+                    value={notes[checkpoint.id] ?? ""}
+                    onChange={(event) =>
+                      setNotes((current) => ({ ...current, [checkpoint.id]: event.target.value }))
+                    }
+                  />
+                  <Input
+                    type="file"
+                    onChange={(event) =>
+                      setFiles((current) => ({
+                        ...current,
+                        [checkpoint.id]: event.target.files?.[0]?.name ?? "",
+                      }))
+                    }
+                  />
+                  <Button
+                    className="w-full"
+                    onClick={() =>
+                      actions.completeCheckpoint(
+                        quest.id,
+                        checkpoint.id,
+                        notes[checkpoint.id] || "Checkpoint completed.",
+                        files[checkpoint.id],
+                      )
+                    }
+                  >
+                    Complete Checkpoint
+                  </Button>
+                  <ProofUploadButton
+                    actions={actions}
+                    checkpointId={checkpoint.id}
+                    label="Upload Checkpoint Proof"
+                    quest={quest}
+                  />
+                </div>
+              )}
+              {(userRole === "tasker" || userRole === "mediator") && (
+                <div className="lg:w-[220px]">
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => actions.flagCheckpoint(quest.id, checkpoint.id)}
+                  >
+                    Flag Checkpoint
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OnlineProgressPanel({
+  actions,
+  quest,
+  userRole,
+}: {
+  actions: QuestActions;
+  quest: Quest;
+  userRole: UserRole;
+}) {
+  const [drafts, setDrafts] = useState<Record<string, { explanation: string; proof: string; claim: string; feedback: string }>>({});
+  const milestones = quest.onlineMilestones?.length ? quest.onlineMilestones : onlineMilestonesForQuest(quest);
+  if (quest.type !== "online") return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>Online Proof Progress</CardTitle>
+          <QuestTypeBadge type="online" />
+        </div>
+        <CardDescription>
+          Online quests use milestone proof, explanations, revision history, and tasker feedback instead of GPS.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {milestones.map((milestone) => {
+          const draft = drafts[milestone.id] ?? {
+            explanation: "",
+            proof: "",
+            claim: String(milestone.completionPercentageClaimed),
+            feedback: "",
+          };
+          return (
+          <div key={milestone.id} className="min-w-0 overflow-hidden rounded-lg border bg-background/35 p-3">
+              <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="break-words font-semibold">{milestone.title}</p>
+                    <Badge variant="outline">{milestone.status}</Badge>
+                    <Badge variant="outline">{milestone.completionPercentageClaimed}% claimed</Badge>
+                  </div>
+                  <p className="mt-2 break-words text-sm text-muted-foreground">
+                    {milestone.workerExplanation || "No progress explanation submitted yet."}
+                  </p>
+                  <div className="mt-2 flex min-w-0 flex-wrap gap-2 text-xs">
+                    <Badge variant="secondary">Proof: {milestone.proofUpload || "pending"}</Badge>
+                    {milestone.timestamp && <Badge variant="outline">{milestone.timestamp}</Badge>}
+                  </div>
+                  {milestone.taskerFeedback && (
+                    <div className="mt-3 min-w-0 rounded-lg border bg-card/60 p-3 text-sm text-muted-foreground">
+                      Tasker feedback: {milestone.taskerFeedback}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 space-y-2 lg:w-[280px]">
+                  {userRole === "worker" && (
+                    <>
+                      <Textarea
+                        placeholder="What stage is complete?"
+                        value={draft.explanation}
+                        onChange={(event) =>
+                          setDrafts((current) => ({
+                            ...current,
+                            [milestone.id]: { ...draft, explanation: event.target.value },
+                          }))
+                        }
+                      />
+                      <Input
+                        placeholder="Proof file/link"
+                        value={draft.proof}
+                        onChange={(event) =>
+                          setDrafts((current) => ({
+                            ...current,
+                            [milestone.id]: { ...draft, proof: event.target.value },
+                          }))
+                        }
+                      />
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={draft.claim}
+                        onChange={(event) =>
+                          setDrafts((current) => ({
+                            ...current,
+                            [milestone.id]: { ...draft, claim: event.target.value },
+                          }))
+                        }
+                      />
+                      <Button
+                        className="w-full"
+                        onClick={() =>
+                          actions.submitOnlineMilestone(
+                            quest.id,
+                            milestone.id,
+                            draft.explanation || "Progress proof submitted.",
+                            draft.proof || "mock-online-proof.png",
+                            Number(draft.claim) || milestone.completionPercentageClaimed,
+                          )
+                        }
+                      >
+                        Submit Milestone Proof
+                      </Button>
+                      <ProofUploadButton
+                        actions={actions}
+                        label="Upload Proof"
+                        milestoneId={milestone.id}
+                        quest={quest}
+                      />
+                    </>
+                  )}
+                  {userRole === "tasker" && (
+                    <>
+                      <Textarea
+                        placeholder="Tasker feedback or revision request"
+                        value={draft.feedback}
+                        onChange={(event) =>
+                          setDrafts((current) => ({
+                            ...current,
+                            [milestone.id]: { ...draft, feedback: event.target.value },
+                          }))
+                        }
+                      />
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                        <Button
+                          onClick={() =>
+                            actions.reviewOnlineMilestone(
+                              quest.id,
+                              milestone.id,
+                              "Approved",
+                              draft.feedback || "Approved.",
+                            )
+                          }
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            actions.reviewOnlineMilestone(
+                              quest.id,
+                              milestone.id,
+                              "Revision Requested",
+                              draft.feedback || "Revision requested.",
+                            )
+                          }
+                        >
+                          Request Revision
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuestCopilotPanel({
+  actions,
+  quest,
+}: {
+  actions: QuestActions;
+  quest: Quest;
+}) {
+  const [prompt, setPrompt] = useState("");
+  return (
+    <Card className="border-violet-500/20 bg-violet-500/10">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5" />
+          Quest Copilot
+        </CardTitle>
+        <CardDescription>
+          Mock AI assistant for proof guidance, objectives, safety, and dispute summaries.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {["Explain requirements", "Suggest proof", "Safe handoff", "Summarize dispute"].map((item) => (
+            <Button
+              key={item}
+              size="sm"
+              variant="outline"
+              onClick={() => actions.askCopilot(quest.id, item)}
+            >
+              {item}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Ask Quest Copilot..."
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+          />
+          <Button
+            onClick={() => {
+              actions.askCopilot(quest.id, prompt);
+              setPrompt("");
+            }}
+          >
+            Ask
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {(quest.copilotMessages ?? []).slice(0, 4).map((message) => (
+            <div key={message.id} className="rounded-lg border bg-background/35 p-3 text-sm">
+              <p className="font-medium">{message.prompt}</p>
+              <p className="mt-1 text-muted-foreground">{message.response}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{message.createdAt}</p>
+            </div>
+          ))}
+          {(quest.copilotMessages ?? []).length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              Ask for objective, proof, handoff, or dispute guidance.
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function MissionObjectivesPanel({
   actions,
   mission,
@@ -3086,7 +4465,7 @@ function MissionObjectivesPanel({
   }
 
   function markPicked() {
-    if (quest.type === "vendor") actions.markItemsPicked(quest.id);
+    if (isVendorPurchaseQuest(quest)) actions.markItemsPicked(quest.id);
     else missionControls.completeMissionObjective(quest.id, "picked", "Item picked up");
   }
 
@@ -3103,8 +4482,13 @@ function MissionObjectivesPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Mission Objectives</CardTitle>
-        <CardDescription>Complete objectives to update check-ins and activity automatically.</CardDescription>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>Mission Objectives</CardTitle>
+          <QuestTypeBadge type={quest.type} />
+        </div>
+        <CardDescription>
+          {questTypeLabels[quest.type]} objectives load by quest type and update check-ins automatically.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -3134,12 +4518,12 @@ function MissionObjectivesPanel({
           {userRole === "worker" && (
             <>
               {(quest.status === "worker-approved" || quest.status === "accepted") && <Button onClick={() => actions.startQuest(quest.id)}>Start Quest</Button>}
-              {(quest.type === "physical" || quest.type === "vendor") && (
+              {quest.type === "physical" && (
                 <Button variant="outline" onClick={markArrived}>
                   Mark Arrived
                 </Button>
               )}
-              {(quest.type === "physical" || quest.type === "vendor") && (
+              {quest.type === "physical" && (
                 <Button variant="outline" onClick={markPicked}>
                   Mark Picked Up
                 </Button>
@@ -3158,10 +4542,31 @@ function MissionObjectivesPanel({
                   onSubmit={(payload) => actions.openDispute(quest.id, payload)}
                 />
               )}
+              {quest.worker === "You" &&
+                ["accepted", "worker-approved", "in-progress", "awaiting-confirmation"].includes(quest.status) && (
+                  <CancellationDialogButton
+                    actor="worker"
+                    label="Cancel Mission"
+                    onSubmit={(reason, explanation) =>
+                      actions.cancelQuest(quest.id, "worker", reason, explanation)
+                    }
+                    quest={quest}
+                  />
+                )}
             </>
           )}
           {userRole === "tasker" && (
             <>
+              {["draft", "scheduled", "open-for-applications", "reviewing-applicants"].includes(quest.status) && (
+                <Button variant="outline" onClick={() => actions.editQuest(quest.id)}>
+                  Edit Quest
+                </Button>
+              )}
+              {["draft", "scheduled", "open-for-applications"].includes(quest.status) && !quest.worker && (
+                <Button variant="outline" onClick={() => actions.deleteQuest(quest.id)}>
+                  Delete Quest
+                </Button>
+              )}
               <Button onClick={() => actions.confirmCompletion(quest.id)}>Confirm Delivery</Button>
               <Button
                 variant="outline"
@@ -3179,9 +4584,19 @@ function MissionObjectivesPanel({
                 openedBy="tasker"
                 onSubmit={(payload) => actions.openDispute(quest.id, payload)}
               />
+              {quest.status !== "completed" && quest.status !== "disputed" && !quest.status.startsWith("cancelled") && (
+                <CancellationDialogButton
+                  actor="tasker"
+                  label="Cancel Quest"
+                  onSubmit={(reason, explanation) =>
+                    actions.cancelQuest(quest.id, "tasker", reason, explanation)
+                  }
+                  quest={quest}
+                />
+              )}
             </>
           )}
-          {userRole === "vendor" && quest.type === "vendor" && (
+          {userRole === "vendor" && isVendorPurchaseQuest(quest) && (
             <>
               <Button onClick={() => actions.vendorConfirm(quest.id)}>Confirm Items</Button>
               <Button variant="outline" onClick={() => actions.vendorConfirm(quest.id)}>
@@ -3195,12 +4610,17 @@ function MissionObjectivesPanel({
   );
 }
 
-function CheckInsPanel({ mission }: { mission: MissionState }) {
+function CheckInsPanel({ mission, quest }: { mission: MissionState; quest: Quest }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Check-ins</CardTitle>
-        <CardDescription>Every objective has a matching mission check-in.</CardDescription>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>Check-ins</CardTitle>
+          <QuestTypeBadge type={quest.type} />
+        </div>
+        <CardDescription>
+          Every {questTypeLabels[quest.type].toLowerCase()} objective has a matching mission check-in.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         {mission.checkIns.map((checkIn) => (
@@ -3245,60 +4665,65 @@ function MissionChatPanel({
   return (
     <Card className="overflow-hidden">
       <CardHeader>
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row">
+          <div className="min-w-0">
             <CardTitle>Mission Chat</CardTitle>
-            <CardDescription>Tasker, worker, vendor, and system mission updates.</CardDescription>
+            <CardDescription>
+              {questTypeLabels[quest.type]} conversation for tasker, worker, vendor, and system mission updates.
+            </CardDescription>
           </div>
           {mission.unreadCount > 0 && (
             <Badge variant="secondary">{mission.unreadCount} unread</Badge>
           )}
         </div>
+        <div className="mt-3">
+          <QuestTypeBadge type={quest.type} />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+        <div className="max-h-[420px] min-w-0 space-y-3 overflow-y-auto pr-1">
           {mission.chat.map((message) => (
             <div
               key={message.id}
-              className={`rounded-lg border p-3 ${
+              className={`min-w-0 overflow-hidden rounded-lg border p-3 ${
                 message.sender === "system"
                   ? "bg-cyan-500/10 text-cyan-50"
                   : message.sender === sender
-                    ? "ml-8 bg-violet-500/15"
-                    : "mr-8 bg-background/45"
+                    ? "sm:ml-8 bg-violet-500/15"
+                    : "sm:mr-8 bg-background/45"
               }`}
             >
-              <div className="mb-1 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
                 <span className="capitalize">{message.sender}</span>
                 <span>{message.createdAt}</span>
               </div>
               {message.type === "location" ? (
-                <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-3">
+                <div className="min-w-0 rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-3">
                   <MapPinned className="mb-2 h-5 w-5 text-cyan-200" />
-                  <p className="font-medium">{message.body}</p>
+                  <p className="break-words font-medium">{message.body}</p>
                   <p className="text-xs text-cyan-100/75">Mock map card · no real maps connected</p>
                 </div>
               ) : (
-                <p className="text-sm">{message.body}</p>
+                <p className="break-words text-sm">{message.body}</p>
               )}
             </div>
           ))}
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => send("image", "Mock image proof shared.")}>
+        <div className="grid min-w-0 gap-2 sm:grid-cols-3">
+          <Button className="w-full" variant="outline" onClick={() => send("image", "Mock image proof shared.")}>
             <Paperclip className="h-4 w-4" />
             Image
           </Button>
-          <Button variant="outline" onClick={() => send("video", "Mock video proof shared.")}>
+          <Button className="w-full" variant="outline" onClick={() => send("video", "Mock video proof shared.")}>
             <Video className="h-4 w-4" />
             Video
           </Button>
-          <Button variant="outline" onClick={() => missionControls.shareLiveLocation(quest.id)}>
+          <Button className="w-full" variant="outline" onClick={() => missionControls.shareLiveLocation(quest.id)}>
             <Navigation className="h-4 w-4" />
             Share Live Location
           </Button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex min-w-0 gap-2">
           <Input
             placeholder="Send a mission update..."
             value={draft}
@@ -3343,14 +4768,14 @@ function LocationMockCard({
           <div className="absolute bottom-7 left-1/2 h-3 w-3 rounded-full bg-violet-300 shadow-[0_0_30px_rgba(167,139,250,0.8)]" />
           <div className="absolute inset-x-8 top-1/2 h-px rotate-[-12deg] bg-cyan-200/50" />
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row">
+          <div className="min-w-0">
             <p className="font-medium">{mission.locationStatus}</p>
             <p className="text-xs text-muted-foreground">
               {mission.liveLocationShared ? "Live tracking active" : "Location sharing idle"}
             </p>
           </div>
-          <Button variant="outline" onClick={() => missionControls.shareLiveLocation(quest.id)}>
+          <Button className="w-full sm:w-auto" variant="outline" onClick={() => missionControls.shareLiveLocation(quest.id)}>
             Share Live Location
           </Button>
         </div>
@@ -3359,14 +4784,47 @@ function LocationMockCard({
   );
 }
 
-function SafetyCenterPanel({ quest }: { quest: Quest }) {
+function SafetyCenterPanel({
+  actions,
+  quest,
+  userRole,
+}: {
+  actions: QuestActions;
+  quest: Quest;
+  userRole: UserRole;
+}) {
   if (quest.type === "online") {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Safety Center</CardTitle>
-          <CardDescription>Online quests use proof, chat history, escrow, and disputes.</CardDescription>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle>Safety Center</CardTitle>
+            <QuestTypeBadge type="online" />
+          </div>
+          <CardDescription>Online quests use lighter safety rules around proof, escrow, chat, and disputes.</CardDescription>
         </CardHeader>
+        <CardContent className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-3">
+          {[
+            ["Proof Required", "Submit files, links, screenshots, or proof notes before confirmation."],
+            ["Escrow Protected", "Worker reward stays locked until the tasker confirms completion."],
+            ["Chat Evidence", "Mission chat and system updates provide review context."],
+            ["Dispute Ready", "Either side can escalate quality, payment, or requirement issues."],
+          ].map(([title, copy]) => (
+            <div key={title} className="min-w-0 rounded-lg border bg-background/35 p-3">
+              <p className="break-words font-medium">{title}</p>
+              <p className="mt-1 break-words text-sm text-muted-foreground">{copy}</p>
+            </div>
+          ))}
+          <div className="min-w-0 rounded-lg border bg-background/35 p-3">
+            <p className="break-words font-medium">Proof Upload</p>
+            <p className="mt-1 break-words text-sm text-muted-foreground">
+              Add online work proof without leaving the Safety Center.
+            </p>
+            <div className="mt-3">
+              <ProofUploadButton actions={actions} label="Upload Proof" quest={quest} />
+            </div>
+          </div>
+        </CardContent>
       </Card>
     );
   }
@@ -3374,7 +4832,10 @@ function SafetyCenterPanel({ quest }: { quest: Quest }) {
   return (
     <Card className="border-emerald-500/20 bg-emerald-500/10">
       <CardHeader>
-        <CardTitle>Safety Center</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>Safety Center</CardTitle>
+          <QuestTypeBadge type={quest.type} />
+        </div>
         <CardDescription>Campus-only controls for physical and vendor missions.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -3387,23 +4848,24 @@ function SafetyCenterPanel({ quest }: { quest: Quest }) {
             <Radio className="h-3 w-3" />
             Live tracking active
           </Badge>
+          {quest.safetyAlerts?.length ? (
+            <Badge className="border-rose-500/25 bg-rose-500/12 text-rose-200" variant="outline">
+              SOS Triggered
+            </Badge>
+          ) : null}
+          {quest.issueReports?.length ? <Badge variant="outline">Report Submitted</Badge> : null}
+          {quest.trustedContactShared ? <Badge variant="outline">Trusted contact shared</Badge> : null}
         </div>
-        <div className="rounded-lg border bg-background/35 p-3">
+        <div className="min-w-0 rounded-lg border bg-background/35 p-3">
           <p className="text-xs text-muted-foreground">Safe handoff point</p>
-          <p className="font-semibold">{quest.safeHandoffPoint || "Campus safe zone"}</p>
+          <p className="break-words font-semibold">{quest.safeHandoffPoint || "Campus safe zone"}</p>
         </div>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <Button variant="destructive">
-            <Siren className="h-4 w-4" />
-            SOS
-          </Button>
-          <Button variant="outline">
-            <ShieldAlert className="h-4 w-4" />
-            Report
-          </Button>
-          <Button variant="outline">
+        <div className="grid min-w-0 gap-2 sm:grid-cols-3">
+          <SosButton actions={actions} quest={quest} userRole={userRole} />
+          <ReportIssueButton actions={actions} quest={quest} userRole={userRole} />
+          <Button className="w-full" variant="outline" onClick={() => actions.shareTrustedContact(quest.id)}>
             <Users className="h-4 w-4" />
-            Trusted Contact
+            {quest.trustedContactShared ? "Contact Shared" : "Trusted Contact"}
           </Button>
         </div>
       </CardContent>
@@ -3422,9 +4884,9 @@ function ActivityTimeline({ mission }: { mission: MissionState }) {
         {mission.activity.map((event) => (
           <div key={event.id} className="flex gap-3">
             <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-cyan-300" />
-            <div className="rounded-lg border bg-background/35 p-3">
-              <p className="font-medium">{event.title}</p>
-              <p className="text-sm text-muted-foreground">{event.detail}</p>
+            <div className="min-w-0 rounded-lg border bg-background/35 p-3">
+              <p className="break-words font-medium">{event.title}</p>
+              <p className="break-words text-sm text-muted-foreground">{event.detail}</p>
               <p className="mt-1 text-xs text-muted-foreground">{event.createdAt}</p>
             </div>
           </div>
@@ -3447,12 +4909,12 @@ function VendorReceiptsPanel({ quests }: { quests: Quest[] }) {
     );
   }
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] gap-4">
       {receipts.map((quest) => (
-        <Card key={quest.id}>
+        <Card key={quest.id} className="overflow-hidden">
           <CardHeader>
-            <CardTitle>{quest.title}</CardTitle>
-            <CardDescription>
+            <CardTitle className="break-words">{quest.title}</CardTitle>
+            <CardDescription className="break-words">
               Item funds went directly to {quest.vendorWallet}. Worker reward remains separate.
             </CardDescription>
           </CardHeader>
@@ -3462,6 +4924,24 @@ function VendorReceiptsPanel({ quests }: { quests: Quest[] }) {
         </Card>
       ))}
     </div>
+  );
+}
+
+function QuestFeedTypeHeader({ type }: { type: QuestType }) {
+  const copy =
+    type === "online"
+      ? "Global digital micro-tasks with proof submission and escrowed worker rewards."
+      : "Verified campus-only missions with handoff points, live tracking, and optional vendor payment checkpoints.";
+  return (
+    <Card className="border-white/10 bg-card/45">
+      <CardContent className="flex min-w-0 flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-semibold">{questTypeLabels[type]} Feed</p>
+          <p className="break-words text-sm text-muted-foreground">{copy}</p>
+        </div>
+        <QuestTypeBadge type={type} />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -3490,7 +4970,7 @@ function QuestGrid({
       variants={staggerContainer}
       initial="hidden"
       animate="visible"
-      className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3"
+      className="grid min-w-0 max-w-full grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4"
     >
       {quests.map((quest) => (
         <QuestCard actions={actions} key={quest.id} quest={quest} userRole={userRole} />
@@ -3501,6 +4981,7 @@ function QuestGrid({
 
 type QuestActions = {
   applyForQuest: (id: string, note: string, eta: string) => void;
+  withdrawApplication: (id: string) => void;
   approveWorker: (id: string, applicationId: string) => void;
   declineApplicant: (id: string, applicationId: string) => void;
   closeApplications: (id: string) => void;
@@ -3514,6 +4995,34 @@ type QuestActions = {
   openDispute: (id: string, input?: string | DisputePayload) => void;
   recommendDispute: (id: string) => void;
   finalizeDispute: (id: string, verdict: string) => void;
+  cancelQuest: (
+    id: string,
+    actor: CancellationActor,
+    reason: CancellationReason,
+    explanation: string,
+  ) => void;
+  editQuest: (id: string) => void;
+  deleteQuest: (id: string) => void;
+  completeCheckpoint: (id: string, checkpointId: string, workerNote: string, proofName?: string) => void;
+  submitOnlineMilestone: (
+    id: string,
+    milestoneId: string,
+    explanation: string,
+    proofUpload: string,
+    completionPercentageClaimed: number,
+  ) => void;
+  reviewOnlineMilestone: (
+    id: string,
+    milestoneId: string,
+    status: OnlineMilestoneStatus,
+    feedback: string,
+  ) => void;
+  askCopilot: (id: string, prompt: string) => void;
+  uploadProofRecord: (id: string, payload: Omit<ProofRecord, "id" | "createdAt">) => void;
+  triggerSos: (id: string, triggeredBy: UserRole) => void;
+  reportIssue: (id: string, payload: Omit<IssueReportRecord, "id" | "createdAt">) => void;
+  flagCheckpoint: (id: string, checkpointId: string) => void;
+  shareTrustedContact: (id: string) => void;
 };
 
 function QuestCard({
@@ -3529,9 +5038,14 @@ function QuestCard({
   const [proofFile, setProofFile] = useState<File | null>(null);
   const timing = questPublishState(quest);
   const isTaskerOwner = quest.tasker === "You";
-  const canWorkerAct = userRole === "worker" && quest.status !== "completed" && quest.status !== "disputed" && timing.isVisible;
+  const canWorkerAct =
+    userRole === "worker" &&
+    quest.status !== "completed" &&
+    quest.status !== "disputed" &&
+    !quest.status.startsWith("cancelled") &&
+    timing.isVisible;
   const canTaskerAct = userRole === "tasker" && isTaskerOwner;
-  const canVendorAct = userRole === "vendor" && quest.type === "vendor";
+  const canVendorAct = userRole === "vendor" && isVendorPurchaseQuest(quest);
 
   return (
     <motion.div className="min-w-0" variants={itemFadeIn}>
@@ -3547,14 +5061,13 @@ function QuestCard({
                   {quest.title}
                 </CardTitle>
                 <CardDescription className="mt-2 flex flex-wrap gap-2 text-xs">
-                  <Badge variant="secondary" className="text-xs">
-                    {quest.type === "online" ? (
-                      <Globe className="mr-1 h-3 w-3" />
-                    ) : (
+                  <QuestTypeBadge type={quest.type} />
+                  {quest.type !== "online" && (
+                    <Badge variant="secondary" className="text-xs">
                       <MapPin className="mr-1 h-3 w-3" />
-                    )}
-                    {quest.type === "online" ? "Online" : quest.campus}
-                  </Badge>
+                      {quest.campus}
+                    </Badge>
+                  )}
                   <Badge className={statusClass(quest.status)} variant="outline">
                     {statusLabels[quest.status]}
                   </Badge>
@@ -3569,6 +5082,13 @@ function QuestCard({
                       Verified
                     </Badge>
                   )}
+                  {quest.proofs?.length ? <Badge variant="outline">Proof uploaded</Badge> : null}
+                  {quest.safetyAlerts?.length ? (
+                    <Badge className="border-rose-500/25 bg-rose-500/12 text-rose-200" variant="outline">
+                      SOS Triggered
+                    </Badge>
+                  ) : null}
+                  {quest.issueReports?.length ? <Badge variant="outline">Report Submitted</Badge> : null}
                 </CardDescription>
               </div>
             </div>
@@ -3608,14 +5128,17 @@ function QuestCard({
             <ApplicantSummary actions={actions} quest={quest} />
           )}
 
-          {quest.type === "physical" && <PhysicalSafety quest={quest} />}
-          {quest.type === "vendor" && <VendorState quest={quest} />}
+          {quest.type === "physical" && <PhysicalSafety actions={actions} quest={quest} userRole={userRole} />}
+          {isVendorPurchaseQuest(quest) && <VendorState quest={quest} />}
           {quest.type === "online" && (
             <OnlineState actions={actions} quest={quest} userRole={userRole} />
           )}
+          {userRole === "worker" && quest.type === "physical" && (canWorkerOpenDispute(quest) || hasDisputeOpened(quest)) && (
+            <PayoutDisputeBlock actions={actions} quest={quest} />
+          )}
 
           {(canWorkerAct || canTaskerAct || canVendorAct) && (
-            <div className="space-y-3 rounded-lg border bg-background/35 p-3">
+            <div className="min-w-0 space-y-3 overflow-hidden rounded-lg border bg-background/35 p-3">
               {canWorkerAct && (
                 <WorkerActions
                   actions={actions}
@@ -3660,7 +5183,13 @@ function WorkerActions({
   const [note, setNote] = useState("");
   const [eta, setEta] = useState("");
   const alreadyApplied = (quest.applications ?? []).some(
-    (application) => application.workerName === "You" && application.status !== "declined",
+    (application) =>
+      application.workerName === "You" &&
+      application.status !== "declined" &&
+      application.status !== "withdrawn",
+  );
+  const hasPendingApplication = (quest.applications ?? []).some(
+    (application) => application.workerName === "You" && application.status === "pending",
   );
   return (
     <div className="space-y-2">
@@ -3683,6 +5212,11 @@ function WorkerActions({
           >
             {alreadyApplied ? "Application Sent" : "Apply for Quest"}
           </Button>
+          {hasPendingApplication && (
+            <Button className="w-full" variant="outline" onClick={() => actions.withdrawApplication(quest.id)}>
+              Withdraw Application
+            </Button>
+          )}
         </div>
       )}
       {(quest.status === "worker-approved" || quest.status === "accepted") && quest.worker === "You" && (
@@ -3690,12 +5224,12 @@ function WorkerActions({
           Start Quest
         </Button>
       )}
-      {quest.type === "vendor" && quest.status === "in-progress" && !quest.itemsPicked && (
+      {isVendorPurchaseQuest(quest) && quest.status === "in-progress" && !quest.itemsPicked && (
         <Button className="w-full" onClick={() => actions.markItemsPicked(quest.id)}>
           Mark Items Picked
         </Button>
       )}
-      {quest.status === "in-progress" && (quest.type !== "vendor" || quest.vendorConfirmed) && (
+      {quest.status === "in-progress" && (!isVendorPurchaseQuest(quest) || quest.vendorConfirmed) && (
         <>
           <Textarea
             placeholder={
@@ -3715,6 +5249,16 @@ function WorkerActions({
           </Button>
         </>
       )}
+      {quest.worker === "You" &&
+        ["accepted", "worker-approved", "in-progress", "awaiting-confirmation"].includes(quest.status) && (
+          <CancellationDialogButton
+            actor="worker"
+            label="Cancel Accepted Quest"
+            onSubmit={(reason, explanation) => actions.cancelQuest(quest.id, "worker", reason, explanation)}
+            quest={quest}
+            triggerClassName="w-full border-amber-500/30 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20"
+          />
+        )}
     </div>
   );
 }
@@ -3722,6 +5266,16 @@ function WorkerActions({
 function TaskerActions({ actions, quest }: { actions: QuestActions; quest: Quest }) {
   return (
     <div className="space-y-2">
+      {["draft", "scheduled", "open-for-applications", "reviewing-applicants"].includes(quest.status) && (
+        <Button className="w-full" variant="outline" onClick={() => actions.editQuest(quest.id)}>
+          Edit Quest Details
+        </Button>
+      )}
+      {["draft", "scheduled", "open-for-applications"].includes(quest.status) && !quest.worker && (
+        <Button className="w-full" variant="outline" onClick={() => actions.deleteQuest(quest.id)}>
+          Delete Quest
+        </Button>
+      )}
       {quest.status === "open-for-applications" && (
         <Button className="w-full" variant="outline" onClick={() => actions.closeApplications(quest.id)}>
           Close Applications Early
@@ -3749,6 +5303,15 @@ function TaskerActions({ actions, quest }: { actions: QuestActions; quest: Quest
           triggerClassName="w-full"
         />
       )}
+      {quest.status !== "completed" && quest.status !== "disputed" && !quest.status.startsWith("cancelled") && (
+        <CancellationDialogButton
+          actor="tasker"
+          label="Cancel Quest"
+          onSubmit={(reason, explanation) => actions.cancelQuest(quest.id, "tasker", reason, explanation)}
+          quest={quest}
+          triggerClassName="w-full border-amber-500/30 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20"
+        />
+      )}
       {quest.receipt && (
         <ReceiptBlock receipt={quest.receipt} />
       )}
@@ -3760,9 +5323,9 @@ function ApplicantSummary({ actions, quest }: { actions: QuestActions; quest: Qu
   const applicants = quest.applications ?? [];
   const recommended = applicants.find((application) => application.recommended && application.status === "pending");
   return (
-    <div className="space-y-3 rounded-lg border bg-background/35 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+    <div className="min-w-0 space-y-3 overflow-hidden rounded-lg border bg-background/35 p-3">
+      <div className="flex min-w-0 flex-col items-start justify-between gap-3 sm:flex-row">
+        <div className="min-w-0">
           <p className="text-sm font-semibold">Applicants</p>
           <p className="text-xs text-muted-foreground">
             Compare workers before approving one mission owner.
@@ -3776,17 +5339,17 @@ function ApplicantSummary({ actions, quest }: { actions: QuestActions; quest: Qu
       </div>
       <div className="grid gap-3">
         {applicants.map((application) => (
-          <div key={application.id} className="rounded-lg border bg-card/60 p-3">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-              <div>
+          <div key={application.id} className="min-w-0 overflow-hidden rounded-lg border bg-card/60 p-3">
+            <div className="flex min-w-0 flex-col justify-between gap-3 sm:flex-row sm:items-start">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-semibold">{application.workerName}</p>
                   <Badge variant="secondary">{application.profileBadge}</Badge>
-                  <Badge className={application.status === "approved" ? statusClass("worker-approved") : application.status === "declined" ? statusClass("expired") : statusClass("reviewing-applicants")} variant="outline">
+                  <Badge className={application.status === "approved" ? statusClass("worker-approved") : application.status === "declined" || application.status === "withdrawn" ? statusClass("expired") : statusClass("reviewing-applicants")} variant="outline">
                     {application.status}
                   </Badge>
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">{application.note}</p>
+                <p className="mt-2 break-words text-sm text-muted-foreground">{application.note}</p>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
                   <Badge variant="outline">ETA {application.eta}</Badge>
                   {application.distance && <Badge variant="outline">{application.distance}</Badge>}
@@ -3798,11 +5361,11 @@ function ApplicantSummary({ actions, quest }: { actions: QuestActions; quest: Qu
                 </div>
               </div>
               {application.status === "pending" && (
-                <div className="flex gap-2 sm:flex-col">
-                  <Button size="sm" onClick={() => actions.approveWorker(quest.id, application.id)}>
+                <div className="grid w-full min-w-0 gap-2 sm:w-auto">
+                  <Button className="w-full" size="sm" onClick={() => actions.approveWorker(quest.id, application.id)}>
                     Approve Worker
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => actions.declineApplicant(quest.id, application.id)}>
+                  <Button className="w-full" size="sm" variant="outline" onClick={() => actions.declineApplicant(quest.id, application.id)}>
                     Decline
                   </Button>
                 </div>
@@ -3829,28 +5392,253 @@ function VendorActions({ actions, quest }: { actions: QuestActions; quest: Quest
   );
 }
 
-function PhysicalSafety({ quest }: { quest: Quest }) {
+function ProofUploadButton({
+  actions,
+  checkpointId,
+  label = "Proof Upload",
+  milestoneId,
+  quest,
+}: {
+  actions: QuestActions;
+  checkpointId?: string;
+  label?: string;
+  milestoneId?: string;
+  quest: Quest;
+}) {
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [proofType, setProofType] = useState<ProofType>("image");
+
+  function submit() {
+    actions.uploadProofRecord(quest.id, {
+      note: note || "Proof uploaded from mission UI.",
+      fileName: fileName || `mock-${proofType}-proof`,
+      proofType,
+      checkpointId,
+      milestoneId,
+    });
+    setOpen(false);
+    setNote("");
+    setFileName("");
+    setProofType("image");
+  }
+
   return (
-    <div className="grid gap-2 rounded-lg border bg-background/35 p-3 text-xs text-muted-foreground">
+    <>
+      <Button className="w-full" size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Upload className="mr-1 h-3 w-3" />
+        {label}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Upload Proof</DialogTitle>
+            <DialogDescription>
+              Save proof to this quest and sync it to the mission activity log.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Proof type</Label>
+              <Select value={proofType} onValueChange={(value) => setProofType(value as ProofType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {proofTypes.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Proof note</Label>
+              <Textarea
+                placeholder="Describe what this proof shows..."
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Mock file/image name</Label>
+              <Input
+                placeholder="handoff-photo.jpg"
+                value={fileName}
+                onChange={(event) => setFileName(event.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={submit}>Save Proof</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function SosButton({
+  actions,
+  quest,
+  userRole,
+}: {
+  actions: QuestActions;
+  quest: Quest;
+  userRole: UserRole;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button className="w-full" size="sm" variant="destructive" onClick={() => setOpen(true)}>
+        SOS
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Trigger SOS?</DialogTitle>
+            <DialogDescription>
+              This will alert Side Quests safety support and mark this quest for urgent review.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                actions.triggerSos(quest.id, userRole);
+                setOpen(false);
+              }}
+            >
+              Trigger SOS
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function ReportIssueButton({
+  actions,
+  quest,
+  userRole,
+}: {
+  actions: QuestActions;
+  quest: Quest;
+  userRole: UserRole;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState<ReportReason>("unsafe behavior");
+  const [explanation, setExplanation] = useState("");
+  const [escalate, setEscalate] = useState(false);
+
+  function submit() {
+    actions.reportIssue(quest.id, {
+      reason,
+      explanation: explanation || "Report submitted from safety UI.",
+      escalateToDispute: escalate,
+      submittedBy: userRole,
+    });
+    setOpen(false);
+    setExplanation("");
+    setEscalate(false);
+  }
+
+  return (
+    <>
+      <Button className="w-full" size="sm" variant="outline" onClick={() => setOpen(true)}>
+        Report
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Report Issue</DialogTitle>
+            <DialogDescription>
+              Submit a safety or quality issue. You can also escalate it into a dispute.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Select value={reason} onValueChange={(value) => setReason(value as ReportReason)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {reportReasons.map((item) => (
+                    <SelectItem key={item} value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Explanation</Label>
+              <Textarea
+                placeholder="Explain the issue..."
+                value={explanation}
+                onChange={(event) => setExplanation(event.target.value)}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div>
+                <p className="text-sm font-medium">Escalate to dispute</p>
+                <p className="text-xs text-muted-foreground">Creates a mediator-visible dispute record.</p>
+              </div>
+              <Switch checked={escalate} onCheckedChange={setEscalate} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={submit}>Submit Report</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function PhysicalSafety({
+  actions,
+  quest,
+  userRole,
+}: {
+  actions: QuestActions;
+  quest: Quest;
+  userRole: UserRole;
+}) {
+  return (
+    <div className="grid min-w-0 gap-2 overflow-hidden rounded-lg border bg-background/35 p-3 text-xs text-muted-foreground">
       <div className="flex flex-wrap gap-2">
         <Badge className="border-emerald-500/20 bg-emerald-500/10 text-emerald-200" variant="outline">
           <GraduationCap className="mr-1 h-3 w-3" />
           Verified campus
         </Badge>
         <Badge variant="outline">Tracking: {quest.liveTracking}</Badge>
+        {quest.proofs?.length ? <Badge variant="outline">Proof uploaded</Badge> : null}
+        {quest.safetyAlerts?.length ? (
+          <Badge className="border-rose-500/25 bg-rose-500/12 text-rose-200" variant="outline">
+            SOS Triggered
+          </Badge>
+        ) : null}
+        {quest.issueReports?.length ? <Badge variant="outline">Report Submitted</Badge> : null}
       </div>
-      <p>Safe handoff: {quest.safeHandoffPoint || "Campus safe zone"}</p>
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline">
-          <Upload className="mr-1 h-3 w-3" />
-          Proof Upload
-        </Button>
-        <Button size="sm" variant="destructive">
-          SOS
-        </Button>
-        <Button size="sm" variant="outline">
-          Report
-        </Button>
+      <p className="break-words">Safe handoff: {quest.safeHandoffPoint || "Campus safe zone"}</p>
+      <div className="grid min-w-0 gap-2 sm:grid-cols-3">
+        <ProofUploadButton actions={actions} quest={quest} />
+        <SosButton actions={actions} quest={quest} userRole={userRole} />
+        <ReportIssueButton actions={actions} quest={quest} userRole={userRole} />
       </div>
     </div>
   );
@@ -3873,9 +5661,9 @@ function VendorState({ quest }: { quest: Quest }) {
         <span className="shrink-0">Worker reward</span>
         <span className="font-medium text-emerald-200">{currency(quest.reward)}</span>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex min-w-0 flex-wrap gap-2">
         {quest.itemList.map((item) => (
-          <Badge key={item} variant="secondary">
+          <Badge key={item} className="min-w-0 break-words" variant="secondary">
             {item}
           </Badge>
         ))}
@@ -3940,55 +5728,30 @@ function OnlineState({
 function ReceiptBlock({ receipt }: { receipt?: Receipt }) {
   if (!receipt) return null;
   return (
-    <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
-      <div className="mb-2 flex items-center gap-2 font-medium">
+    <div className="min-w-0 overflow-hidden rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-3 text-xs text-cyan-100">
+      <div className="mb-2 flex min-w-0 items-center gap-2 break-words font-medium">
         <ReceiptText className="h-4 w-4" />
-        Digital receipt {receipt.id}
+        <span className="min-w-0 break-words">Digital receipt {receipt.id}</span>
       </div>
-      <p>{receipt.vendor}</p>
-      <p>{receipt.wallet}</p>
-      <p>{currency(receipt.amount)} item funds paid directly to vendor wallet.</p>
-      <p>{receipt.issuedAt}</p>
+      <p className="break-words">{receipt.vendor}</p>
+      <p className="break-words">{receipt.wallet}</p>
+      <p className="break-words">{currency(receipt.amount)} item funds paid directly to vendor wallet.</p>
+      <p className="break-words">{receipt.issuedAt}</p>
     </div>
-  );
-}
-
-function VendorRulesCard() {
-  return (
-    <Card className="min-w-0">
-      <CardHeader>
-        <CardTitle>Vendor Quest Rule</CardTitle>
-        <CardDescription>
-          Workers never receive item funds. Only the worker reward can be released to the worker.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm text-muted-foreground">
-        {[
-          "Tasker locks item funds + worker reward.",
-          "Worker picks items and marks them picked.",
-          "Vendor confirms basket and receives item funds.",
-          "Receipt is generated for the tasker.",
-          "Worker delivers and tasker releases reward.",
-        ].map((step, index) => (
-          <div key={step} className="flex min-w-0 gap-3">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-              {index + 1}
-            </span>
-            <span className="min-w-0 break-words">{step}</span>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
   );
 }
 
 function DisputesPanel({
   actions,
   disputes,
+  missionStates,
+  quests,
   userRole,
 }: {
   actions: QuestActions;
   disputes: Dispute[];
+  missionStates: Record<string, MissionState>;
+  quests: Quest[];
   userRole: UserRole;
 }) {
   if (disputes.length === 0) {
@@ -4004,33 +5767,41 @@ function DisputesPanel({
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      {disputes.map((dispute) => (
-        <Card key={dispute.id}>
+      {disputes.map((dispute) => {
+        const quest = quests.find((item) => item.id === dispute.questId);
+        const mission = missionStates[dispute.questId];
+        return (
+        <Card key={dispute.id} className="overflow-hidden">
           <CardHeader>
-            <div className="flex items-center justify-between gap-4">
-              <CardTitle className="text-base">{dispute.questTitle}</CardTitle>
+            <div className="flex min-w-0 flex-col items-start justify-between gap-4 sm:flex-row">
+              <CardTitle className="break-words text-base">{dispute.questTitle}</CardTitle>
               <Badge className={dispute.status === "finalized" ? statusClass("completed") : statusClass("disputed")} variant="outline">
                 {dispute.status}
               </Badge>
             </div>
-            <CardDescription>
+            <CardDescription className="break-words">
               {dispute.taskerName} vs {dispute.workerName}
             </CardDescription>
+            {quest && (
+              <div className="pt-2">
+                <QuestTypeBadge type={quest.type} />
+              </div>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <h4 className="mb-2 font-medium">Reason</h4>
-              <p className="text-sm text-muted-foreground">{dispute.reason}</p>
+              <p className="break-words text-sm text-muted-foreground">{dispute.reason}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Opened by {dispute.openedBy || "tasker"}
               </p>
               {dispute.explanation && (
-                <p className="mt-2 text-sm text-muted-foreground">{dispute.explanation}</p>
+                <p className="mt-2 break-words text-sm text-muted-foreground">{dispute.explanation}</p>
               )}
             </div>
             <div>
               <h4 className="mb-2 font-medium">Evidence</h4>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex min-w-0 flex-wrap gap-2">
                 {dispute.evidence.map((file) => (
                   <Badge key={file} variant="secondary">
                     {file}
@@ -4048,18 +5819,25 @@ function DisputesPanel({
                 Final verdict: {dispute.verdict}
               </div>
             )}
+            {quest && (
+              <DisputeEvidenceExpansion
+                mission={mission}
+                quest={quest}
+              />
+            )}
             {userRole === "mediator" && dispute.status === "pending" && (
               <Button className="w-full" onClick={() => actions.recommendDispute(dispute.id)}>
                 Submit Mediator Recommendation
               </Button>
             )}
             {userRole === "admin" && dispute.status !== "finalized" && (
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Button onClick={() => actions.finalizeDispute(dispute.id, "finalized for tasker")}>
+            <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+                <Button className="w-full" onClick={() => actions.finalizeDispute(dispute.id, "finalized for tasker")}>
                   <CheckCircle2 className="mr-2 h-4 w-4" />
                   Finalize for Tasker
                 </Button>
                 <Button
+                  className="w-full"
                   variant="outline"
                   onClick={() => actions.finalizeDispute(dispute.id, "finalized for worker")}
                 >
@@ -4075,7 +5853,131 @@ function DisputesPanel({
             )}
           </CardContent>
         </Card>
-      ))}
+      );
+      })}
+    </div>
+  );
+}
+
+function generateCopilotObjectives(form: QuestFormState): CopilotObjective[] {
+  const purchase = form.type === "physical" && (form.vendorName || Number(form.itemFunds) > 0 || form.itemList.trim());
+  const steps = form.type === "online"
+    ? [
+        ["Review quest brief", "Worker confirms scope, deliverables, and deadline.", "Brief acknowledgement or questions", "Worker understands requirements before starting.", 15, "Use chat and notes as proof."],
+        ["Submit progress proof", "Worker uploads staged proof with a clear progress explanation.", "Screenshot, file link, or draft", "Tasker can verify meaningful progress.", 45, "Mediator can inspect proof and timeline."],
+        ["Final handoff", "Worker submits the completed output and source files when relevant.", "Final file, link, or screenshots", "Tasker has enough proof to release payout.", 40, "Require final proof before payout."],
+      ]
+    : purchase
+      ? [
+          ["Arrive at vendor", "Worker checks in at the verified campus vendor.", "Location snapshot and worker note", "Worker is physically at the vendor checkpoint.", 18, "Use GPS confidence and timestamp."],
+          ["Pick requested items", "Worker selects listed items and records substitutions.", "Basket photo or item list note", "Item list matches tasker request.", 24, "Vendor and tasker can inspect items."],
+          ["Vendor confirms items", "Vendor checks basket before escrow releases item funds.", "Vendor confirmation", "Item funds go directly to vendor wallet.", 22, "Vendor confirmation is required."],
+          ["Receipt and handoff", "Worker delivers items and shares e-receipt proof.", "Receipt plus delivery photo", "Tasker can verify receipt and handoff.", 36, "Receipt and handoff proof close the mission."],
+        ]
+      : [
+          ["Arrive at pickup point", "Worker reaches the campus pickup location.", "Location snapshot", "Worker is at the correct campus zone.", 20, "GPS confidence plus timestamp."],
+          ["Collect item safely", "Worker picks up the item or completes the campus errand step.", "Photo or worker note", "Item/task is in worker custody.", 30, "Require proof if risk is above low."],
+          ["Deliver at safe handoff", "Worker completes handoff at the approved point.", "Delivery proof", "Tasker can confirm completion.", 50, "Safe handoff and timestamp should be visible."],
+        ];
+
+  return steps.map(([title, description, proofRequirement, completionRule, effortWeight, verificationRecommendation], index) => ({
+    id: `copilot-${Date.now()}-${index}`,
+    title: String(title),
+    description: String(description),
+    proofRequirement: String(proofRequirement),
+    completionRule: String(completionRule),
+    effortWeight: Number(effortWeight),
+    verificationRecommendation: String(verificationRecommendation),
+    approved: true,
+  }));
+}
+
+function DisputeEvidenceExpansion({
+  mission,
+  quest,
+}: {
+  mission?: MissionState;
+  quest: Quest;
+}) {
+  const preview = quest.compensationPreview ?? calculateCompensation(quest);
+  const evidenceItems = [
+    ...(quest.proofs ?? []).map((proof) => ({
+      title: `Proof uploaded: ${proof.proofType}`,
+      detail: `${proof.note}. File: ${proof.fileName || "mock proof"}`,
+      meta: proof.createdAt,
+    })),
+    ...(quest.safetyAlerts ?? []).map((alert) => ({
+      title: "SOS safety alert",
+      detail: alert.message,
+      meta: alert.createdAt,
+    })),
+    ...(quest.issueReports ?? []).map((report) => ({
+      title: `Report: ${report.reason}`,
+      detail: `${report.explanation}${report.escalateToDispute ? " Escalated to dispute." : ""}`,
+      meta: report.createdAt,
+    })),
+    ...(quest.cancellations ?? []).map((item) => ({
+      title: statusLabels[item.state],
+      detail: `${item.actor} cancellation: ${item.reason}. ${item.explanation}`,
+      meta: item.createdAt,
+    })),
+    ...(quest.type === "physical"
+      ? (quest.checkpoints ?? []).map((checkpoint) => ({
+          title: checkpoint.title,
+          detail: `${checkpoint.verificationStatus}; proof ${checkpoint.uploadedProof || "none"}; location ${checkpoint.locationConfidence}%`,
+          meta: checkpoint.timestamp || "Pending",
+        }))
+      : (quest.onlineMilestones ?? []).map((milestone) => ({
+          title: milestone.title,
+          detail: `${milestone.status}; ${milestone.workerExplanation || "no explanation"}; proof ${milestone.proofUpload || "none"}`,
+          meta: milestone.timestamp || "Pending",
+        }))),
+    ...(quest.receipt
+      ? [
+          {
+            title: "Vendor confirmation",
+            detail: `${quest.vendorName || "Vendor"} confirmed ${quest.itemList.length} items and received ${currency(quest.vendorPaidAmount)} directly.`,
+            meta: quest.receipt.issuedAt,
+          },
+        ]
+      : []),
+    ...(mission?.chat ?? []).slice(-4).map((message) => ({
+      title: `Chat: ${message.sender}`,
+      detail: message.body,
+      meta: message.createdAt,
+    })),
+  ];
+
+  return (
+    <div className="min-w-0 space-y-3 overflow-hidden rounded-lg border bg-background/35 p-3">
+      <div>
+        <h4 className="font-medium">Expanded Evidence Timeline</h4>
+        <p className="text-xs text-muted-foreground">
+          Checkpoints, proof uploads, cancellation reasons, chat logs, vendor confirmations, and compensation context.
+        </p>
+      </div>
+      <div className="grid min-w-0 gap-2">
+        {evidenceItems.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No expanded evidence has been captured yet.</p>
+        ) : (
+          evidenceItems.map((item, index) => (
+            <div key={`${item.title}-${index}`} className="min-w-0 overflow-hidden rounded-lg border bg-card/60 p-3 text-sm">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <p className="break-words font-medium">{item.title}</p>
+                <Badge variant="outline">{item.meta}</Badge>
+              </div>
+              <p className="mt-1 break-words text-muted-foreground">{item.detail}</p>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-3 text-sm text-cyan-100">
+        <p className="font-semibold">Compensation recommendation</p>
+        <p className="mt-1">
+          Release {currency(preview.workerCompensation)} to worker and refund {currency(preview.taskerRefund)} to tasker
+          based on {preview.effortPercent}% recognized effort.
+        </p>
+      </div>
     </div>
   );
 }
@@ -4095,15 +5997,84 @@ function PostQuestDialog({
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updateObjective(index: number, patch: Partial<CopilotObjective>) {
+    setForm((current) => ({
+      ...current,
+      copilotObjectives: current.copilotObjectives.map((objective, objectiveIndex) =>
+        objectiveIndex === index ? { ...objective, ...patch } : objective,
+      ),
+    }));
+  }
+
+  function moveObjective(index: number, direction: -1 | 1) {
+    setForm((current) => {
+      const next = [...current.copilotObjectives];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return current;
+      [next[index], next[target]] = [next[target], next[index]];
+      return { ...current, copilotObjectives: next };
+    });
+  }
+
+  function addObjective() {
+    setForm((current) => ({
+      ...current,
+      copilotObjectives: [
+        ...current.copilotObjectives,
+        {
+          id: makeId("copilot-objective"),
+          title: "",
+          description: "",
+          proofRequirement: "",
+          completionRule: "Tasker can verify completion.",
+          effortWeight: 0,
+          verificationRecommendation: "Review proof before payout.",
+          approved: true,
+        },
+      ],
+    }));
+  }
+
+  function deleteObjective(index: number) {
+    setForm((current) => ({
+      ...current,
+      copilotObjectives: current.copilotObjectives.filter((_, objectiveIndex) => objectiveIndex !== index),
+    }));
+  }
+
+  function addAttachments(files: FileList | null) {
+    if (!files?.length) return;
+    const uploadedAt = nowLabel();
+    const nextAttachments: AttachmentMetadata[] = Array.from(files).map((file) => ({
+      id: makeId("attachment"),
+      fileName: file.name,
+      fileType: file.type || "unknown",
+      fileSize: file.size,
+      uploadedAt,
+      relatedQuestDraftId: form.draftId,
+    }));
+    setForm((current) => ({
+      ...current,
+      attachments: [...current.attachments, ...nextAttachments],
+    }));
+  }
+
+  function removeAttachment(id: string) {
+    setForm((current) => ({
+      ...current,
+      attachments: current.attachments.filter((attachment) => attachment.id !== id),
+    }));
+  }
+
   async function submit() {
     await onCreateQuest(form);
-    setForm(defaultQuestForm);
+    setForm({ ...defaultQuestForm, draftId: makeId("draft") });
     onOpenChange(false);
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Post a New Quest</DialogTitle>
           <DialogDescription>
@@ -4120,7 +6091,6 @@ function PostQuestDialog({
               <SelectContent>
                 <SelectItem value="online">Online Quest</SelectItem>
                 <SelectItem value="physical">Physical Campus Quest</SelectItem>
-                <SelectItem value="vendor">Vendor Purchase Quest</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -4308,8 +6278,14 @@ function PostQuestDialog({
             </div>
           )}
 
-          {form.type === "vendor" && (
+          {form.type === "physical" && (
             <div className="space-y-4 rounded-lg border p-4">
+              <div>
+                <Label>Optional vendor payment checkpoint</Label>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Use this only for physical purchase quests where escrow pays a verified vendor directly.
+                </p>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="vendor">Vendor</Label>
@@ -4355,9 +6331,94 @@ function PostQuestDialog({
             />
           </div>
 
+          <div className="space-y-4 rounded-lg border border-violet-500/20 bg-violet-500/10 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <Label>AI Mission Objectives</Label>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Quest Copilot suggests objectives only. Taskers approve, edit, delete, or reorder them.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => update("copilotObjectives", generateCopilotObjectives(form))}
+              >
+                <Sparkles className="h-4 w-4" />
+                Generate Mission Objectives
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {form.copilotObjectives.map((objective, index) => (
+                <div key={objective.id} className="rounded-lg border bg-background/35 p-3">
+                  <div className="grid gap-3 sm:grid-cols-[1fr_96px]">
+                    <div className="space-y-2">
+                      <Input
+                        value={objective.title}
+                        placeholder="Custom objective"
+                        onChange={(event) => updateObjective(index, { title: event.target.value })}
+                      />
+                      <Textarea
+                        value={objective.description}
+                        placeholder="Describe this mission checkpoint."
+                        onChange={(event) => updateObjective(index, { description: event.target.value })}
+                      />
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <Input
+                          value={objective.proofRequirement}
+                          onChange={(event) => updateObjective(index, { proofRequirement: event.target.value })}
+                          placeholder="Proof note or upload"
+                        />
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={objective.effortWeight === 0 ? "" : String(objective.effortWeight)}
+                          onChange={(event) => {
+                            const nextValue = event.target.value;
+                            updateObjective(index, {
+                              effortWeight:
+                                nextValue === ""
+                                  ? 0
+                                  : Math.max(0, Math.min(100, Number(nextValue) || 0)),
+                            });
+                          }}
+                          placeholder="Percentage completion"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-2">
+                      <Button size="sm" variant="outline" onClick={() => moveObjective(index, -1)}>
+                        Up
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => moveObjective(index, 1)}>
+                        Down
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={objective.approved ? "secondary" : "outline"}
+                        onClick={() => updateObjective(index, { approved: !objective.approved })}
+                      >
+                        {objective.approved ? "Approved" : "Approve"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => deleteObjective(index)}>
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <Button className="w-full" variant="outline" onClick={addObjective}>
+                Add Objective
+              </Button>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label>Attachments</Label>
-            <div className="rounded-lg border-2 border-dashed p-8 text-center">
+            <label
+              className="block cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition hover:border-primary/50 hover:bg-primary/5"
+              htmlFor="quest-attachments"
+            >
               <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 Mock upload area for screenshots, PDFs, receipts, or reference files
@@ -4366,7 +6427,50 @@ function PostQuestDialog({
                 <ImageIcon className="h-4 w-4" />
                 Stored as text-only demo state for now
               </div>
-            </div>
+              <input
+                accept="image/*,application/pdf,.doc,.docx,.txt,.csv,.xlsx"
+                className="sr-only"
+                id="quest-attachments"
+                multiple
+                type="file"
+                onChange={(event) => {
+                  addAttachments(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+            {form.attachments.length > 0 && (
+              <div className="space-y-2">
+                {form.attachments.map((attachment) => {
+                  const AttachmentIcon = attachmentIconForType(attachment.fileType || attachment.fileName);
+                  return (
+                    <div
+                      key={attachment.id}
+                      className="flex min-w-0 flex-col gap-3 rounded-lg border bg-background/35 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex min-w-0 items-start gap-3">
+                        <AttachmentIcon className="mt-0.5 h-4 w-4 shrink-0 text-cyan-200" />
+                        <div className="min-w-0">
+                          <p className="break-words text-sm font-medium">{attachment.fileName}</p>
+                          <p className="break-words text-xs text-muted-foreground">
+                            {attachment.fileType || "unknown type"} · {formatFileSize(attachment.fileSize)} · {attachment.uploadedAt}
+                          </p>
+                          <p className="break-words text-xs text-muted-foreground">
+                            Draft: {attachment.relatedQuestDraftId || "local draft"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        <Badge variant="outline">Stored locally for demo</Badge>
+                        <Button size="sm" variant="outline" onClick={() => removeAttachment(attachment.id)}>
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-4 text-sm text-cyan-100">
@@ -4396,169 +6500,5 @@ function Brand() {
         Side Quests
       </span>
     </div>
-  );
-}
-
-function InfoSections() {
-  return (
-    <>
-      <motion.section
-        id="features"
-        className="w-full bg-muted/25 py-12 md:py-24"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: false, amount: 0.22 }}
-        variants={fadeIn}
-      >
-        <div className="container max-w-7xl px-4 md:px-6">
-          <motion.div className="space-y-12" variants={staggerContainer}>
-            <motion.div className="space-y-4 text-center" variants={itemFadeIn}>
-              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
-                Functional Local Demo
-              </h2>
-              <p className="mx-auto max-w-2xl text-muted-foreground">
-                Create quests, accept work, submit proof, generate receipts, open disputes,
-                and refresh without losing local demo state.
-              </p>
-            </motion.div>
-            <div className="grid gap-8 md:grid-cols-2">
-              {[
-                {
-                  icon: Globe,
-                  title: "Online Quests",
-                  description: "Workers accept, submit proof text, taskers confirm, and payouts release.",
-                },
-                {
-                  icon: GraduationCap,
-                  title: "Campus Quests",
-                  description: "Physical quests show campus verification, tracking, proof, SOS, and handoff points.",
-                },
-              ].map((feature) => (
-                <motion.div key={feature.title} variants={itemFadeIn}>
-                  <Card className="h-full border-2 bg-card/60 backdrop-blur">
-                    <CardHeader>
-                      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500">
-                        <feature.icon className="h-6 w-6 text-white" />
-                      </div>
-                      <CardTitle>{feature.title}</CardTitle>
-                      <CardDescription>{feature.description}</CardDescription>
-                    </CardHeader>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </motion.section>
-
-      <motion.section
-        id="how-it-works"
-        className="w-full py-12 md:py-24"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: false, amount: 0.24 }}
-        variants={fadeIn}
-      >
-        <div className="container max-w-7xl px-4 md:px-6">
-          <motion.div className="grid gap-8 md:grid-cols-3" variants={staggerContainer}>
-            {[
-              [FileText, "Post", "Tasker creates quest and fake escrow is locked."],
-              [Users, "Complete", "Worker progresses through accept, start, proof, and delivery."],
-              [Scale, "Resolve", "Disputes move through mediator recommendation and admin verdict."],
-            ].map(([Icon, title, copy]) => (
-              <motion.div key={title as string} variants={itemFadeIn}>
-                <Card className="h-full text-center">
-                  <CardHeader>
-                    <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-500">
-                      <Icon className="h-8 w-8 text-white" />
-                    </div>
-                    <CardTitle>{title as string}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">{copy as string}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </motion.section>
-
-      <motion.section
-        id="safety"
-        className="w-full bg-muted/25 py-12 md:py-24"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: false, amount: 0.24 }}
-        variants={fadeIn}
-      >
-        <div className="container max-w-7xl px-4 md:px-6">
-          <motion.div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" variants={staggerContainer}>
-            {[
-              [Shield, "University Verification", "Campus badges and physical quest restrictions."],
-              [MapPin, "Live Tracking Mock", "Status switches from inactive to active to completed."],
-              [AlertCircle, "SOS and Reports", "Physical quest cards show safety actions."],
-            ].map(([Icon, title, copy]) => (
-              <motion.div key={title as string} variants={itemFadeIn}>
-                <Card className="h-full">
-                  <CardHeader>
-                    <Icon className="mb-2 h-8 w-8 text-primary" />
-                    <CardTitle className="text-lg">{title as string}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{copy as string}</p>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </motion.section>
-    </>
-  );
-}
-
-function Footer() {
-  return (
-    <motion.footer
-      className="w-full border-t py-12"
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: false, amount: 0.2 }}
-      variants={fadeIn}
-    >
-      <div className="container max-w-7xl px-4 md:px-6">
-        <motion.div className="grid gap-8 md:grid-cols-4" variants={staggerContainer}>
-          <motion.div className="space-y-4" variants={itemFadeIn}>
-            <Brand />
-            <p className="text-sm text-muted-foreground">
-              Turn everyday tasks into quests. Local-state Phase 2 demo.
-            </p>
-          </motion.div>
-          {[
-            { title: "Product", links: ["Features", "How It Works", "Safety"] },
-            { title: "Demo", links: ["LocalStorage", "Mock Wallet", "Disputes"] },
-            { title: "Next", links: ["Backend", "Solana Wallet", "Campus Verification"] },
-          ].map((section) => (
-            <motion.div key={section.title} className="space-y-4" variants={itemFadeIn}>
-              <h3 className="font-semibold">{section.title}</h3>
-              <ul className="space-y-2">
-                {section.links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          ))}
-        </motion.div>
-        <Separator className="my-8" />
-        <motion.p className="text-sm text-muted-foreground" variants={itemFadeIn}>
-          (c) {new Date().getFullYear()} Side Quests. All rights reserved.
-        </motion.p>
-      </div>
-    </motion.footer>
   );
 }
